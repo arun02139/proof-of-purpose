@@ -266,11 +266,7 @@ export function AuditorProviderCard({
 
   return (
     <Card
-      className={
-        isReal
-          ? "border-2 border-primary ring-1 ring-primary/20"
-          : "opacity-75"
-      }
+      className={isReal ? "" : "opacity-75"}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
