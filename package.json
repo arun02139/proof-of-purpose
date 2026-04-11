@@ -1,0 +1,8 @@
+{
+  "name": "proof-of-purpose",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "typecheck": "pnpm -r run typecheck"
+  }
+}
