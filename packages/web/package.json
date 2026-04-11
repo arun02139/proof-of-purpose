@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
+    "test": "vitest run",
     "typecheck": "react-router typegen && tsc --noEmit"
   },
   "dependencies": {
@@ -19,18 +20,23 @@
     "react": "^19",
     "react-dom": "^19",
     "react-router": "^7",
+    "shared": "workspace:*",
     "tailwind-merge": "latest",
-    "tw-animate-css": "latest",
-    "shared": "workspace:*"
+    "tw-animate-css": "latest"
   },
   "devDependencies": {
     "@react-router/dev": "^7",
     "@tailwindcss/vite": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "jsdom": "^29.0.2",
     "tailwindcss": "^4",
     "typescript": "latest",
     "vite": "^6",
-    "vite-tsconfig-paths": "^4"
+    "vite-tsconfig-paths": "^4",
+    "vitest": "^4.1.4"
   }
 }
