@@ -16,44 +16,44 @@ For this prototype, we demonstrate the full flow end-to-end: a constitution is p
 
 ## User Stories
 
-### Auditor (primary user — an average LLM user who cares about AI accountability)
+### Visitor (default dashboard state — click top-right Login to switch to Auditor)
 
-1. As an auditor, I want to see a list of AI companies and their published constitutions, so that I know what each company has committed to.
-2. As an auditor, I want to see trust-level bars for each company broken down by constitutional category (e.g., Safety, Honesty, Bias, Transparency), so that I can quickly assess where a model is strong or weak.
-3. As an auditor, I want to expand a category to see the individual yes/no questions and how the model answered each one, so that I can judge the quality of the eval for myself.
-4. As an auditor, I want to see which questions the model passed and which it failed, so that I can identify specific violations.
-5. As an auditor, I want to see the actual prompt sent to the model and the model's actual response for any question, so that I can verify the eval is fair and not rigged.
-6. As an auditor, I want to see a SHA-256 hash and a link to verify it against the Bitcoin blockchain, so that I don't have to trust the dashboard operator.
-7. As an auditor, I want clear instructions on how to independently verify the results (download the bundle, hash it, compare to on-chain record), so that I can confirm the results haven't been tampered with.
-8. As an auditor, I want the dashboard to load quickly as a simple web page, so that I can access it without friction.
+1. As a visitor, I want to see multiple AI providers on the dashboard with their trust scores, so that I can compare them side by side.
+2. As a visitor, I want to see trust-level bars for each company broken down by constitutional category (e.g., Safety, Honesty, Bias, Transparency), so that I can quickly assess where a model is strong or weak.
+3. As a visitor, I want to see that one provider's results are from real, verified eval data (visually distinct from placeholder data), so that I understand what is live versus coming soon.
+4. As a visitor, I want to understand the concept in under 30 seconds from the dashboard landing page, so that I don't need to read a white paper to get the point.
+5. As a visitor, I want to see that violations are permanently recorded on Bitcoin and cannot be deleted, so that I trust the system is not controlled by any single party.
+6. As a visitor, I want the dashboard to load quickly as a simple web page, so that I can access it without friction.
 
-### AI Company (narrated in the prototype — demonstrated through pre-built data)
+### Auditor (logged-in dashboard state — click top-right Logout to return to Visitor)
 
-9. As an AI company, I want to publish my constitution as a structured list of yes/no questions with expected answers, so that auditors have a clear, machine-readable standard to test against.
-10. As an AI company, I want my constitution hashed and anchored on Bitcoin, so that the public can verify I haven't quietly changed my promises after the fact.
-11. As an AI company, I want to fund bounties on my own model, so that a clean audit record serves as proof that my model follows its stated purpose.
-12. As an AI company, I want to cryptographically sign my API responses, so that auditors can prove the response genuinely came from my model and wasn't fabricated.
-13. As an AI company, I want my compliance score displayed publicly alongside competitors, so that my strong record becomes a market advantage.
+7. As an auditor, I want to see a list of AI companies and their published constitutions, so that I know what each company has committed to.
+8. As an auditor, I want to expand a category to see the individual yes/no questions, so that I can inspect what the model is being tested on.
+9. As an auditor, I want to click on a specific adversarial question within an expanded category and see input fields for the model's answer and signature, so that I can submit an eval result for that question.
+10. As an auditor, I want to submit an answer and signature for a question and have it hashed and anchored on Bitcoin via OpenTimestamps, so that the result is permanently and publicly verifiable.
+11. As an auditor, I want to see which questions have already been tested (with pass/fail status and on-chain proof), so that I can identify specific violations and verify prior results.
+12. As an auditor, I want to see the SHA-256 hash and a link to verify each anchored result against the Bitcoin blockchain, so that I don't have to trust the dashboard.
+13. As an auditor, I want clear instructions on how to independently verify any result (download the bundle, hash it, compare to on-chain record), so that I can confirm results haven't been tampered with.
 
-### Bounty Poster (narrated in the prototype — shown as a UI concept)
+### AI Company (no dashboard view — participates through constitution publishing and bounty funding)
 
-14. As a bounty poster, I want to see that a bounty pool exists for a given model, so that I understand there is an economic incentive for auditors to test it.
-15. As a bounty poster, I want to see how much has been paid out in bounties for a model, so that I can gauge how actively it is being audited.
+14. As an AI company, I want to publish my constitution as a structured list of yes/no questions with expected answers, so that auditors have a clear, machine-readable standard to test against.
+15. As an AI company, I want my constitution hashed and anchored on Bitcoin, so that the public can verify I haven't quietly changed my promises after the fact.
+16. As an AI company, I want to fund bounties on my own model, so that a clean audit record serves as proof that my model follows its stated purpose.
+17. As an AI company, I want to see that a bounty pool exists for a given model, so that I understand there is an economic incentive for auditors to test it.
+18. As an AI company, I want to see how much has been paid out in bounties for a model, so that I can gauge how actively it is being audited.
+19. As an AI company, I want to cryptographically sign my API responses, so that auditors can prove the response genuinely came from my model and wasn't fabricated.
+20. As an AI company, I want my compliance score displayed publicly alongside competitors, so that my strong record becomes a market advantage.
 
-### Visitor (anyone viewing the dashboard)
+### CLI Functions (no dedicated operator role — run optionally to mock or execute work by various parties)
 
-16. As a visitor, I want to see multiple AI providers on the dashboard with their trust scores, so that I can compare them side by side.
-17. As a visitor, I want to see that one provider's results are from real, verified eval data (visually distinct from placeholder data), so that I understand what is live versus coming soon.
-18. As a visitor, I want to understand the concept in under 30 seconds from the dashboard landing page, so that I don't need to read a white paper to get the point.
-19. As a visitor, I want to see that violations are permanently recorded on Bitcoin and cannot be deleted, so that I trust the system is not controlled by any single party.
+The CLI provides discrete functions that simulate or execute the work of different participants in the protocol. Anyone with the CLI can run these as needed.
 
-### Operator (the person running the eval pipeline — this is the hackathon team)
-
-20. As an operator, I want to run a single CLI command that executes the full eval pipeline against a constitution file, so that I can produce a verified eval bundle with minimal effort.
-21. As an operator, I want the pipeline to automatically generate adversarial prompts from constitution rules, so that I don't have to write test cases by hand.
-22. As an operator, I want each model response judged as binary pass/fail by a separate LLM call with isolated context, so that the judge is independent from the model under test.
-23. As an operator, I want the pipeline to bundle all inputs and outputs into a single JSON file, hash it, and anchor it on Bitcoin via OpenTimestamps, so that the results are immutably timestamped.
-24. As an operator, I want the eval bundle written to a directory the dashboard reads from, so that results appear on the site after I commit them.
+21. Run the full eval pipeline against a constitution file, producing a verified eval bundle.
+22. Send each hardcoded adversarial prompt to the model API and attach a fake signature to the response, demonstrating the signing requirement.
+23. Compare the model's response against the expected Yes/No answer to determine pass/fail.
+24. Bundle all inputs, responses, and fake signatures into a single JSON file and write it to a directory the dashboard reads from.
+25. Mock the work of other parties (e.g., generate placeholder data for providers not tested live).
 
 ## Implementation Decisions
 
@@ -61,20 +61,18 @@ For this prototype, we demonstrate the full flow end-to-end: a constitution is p
 
 Two halves decoupled by a JSON file:
 
-- **CLI eval tool** — runs locally, tests a model against a constitution, produces a JSON eval bundle + Bitcoin timestamp proof
-- **Dashboard** — static web app that reads the committed JSON, displays trust-level bars, and links to on-chain verification
+- **CLI eval tool** — runs locally, tests a model against a constitution, produces a JSON eval bundle written to a shared data directory
+- **Dashboard** — web app that reads the committed JSON, displays trust-level bars, and allows logged-in auditors to submit answer + signature pairs for individual questions and anchor them on Bitcoin via OpenTimestamps
 
-No server-side compute in production. The website is read-only. All eval work happens offline via the CLI.
+The CLI produces eval data offline. The dashboard is the primary interface for both viewing results and anchoring them on Bitcoin.
 
-### The Three Roles in the Eval Pipeline
+### Eval Pipeline
 
-The eval pipeline uses three separate LLM calls with isolated contexts:
+The prototype uses a simplified pipeline with hardcoded inputs and deterministic outputs:
 
-- **Prompt Generator** — given a constitution rule, generates an adversarial prompt designed to elicit a violation
-- **Model Under Test** — receives only the adversarial prompt, with no knowledge of the constitution or test context
-- **Judge** — given the constitution rule and the model's response, scores it as pass or fail
-
-The judge never sees how the prompt was generated. The model under test never sees the judging criteria.
+- **Adversarial Prompts** — hardcoded per constitution rule, along with the expected response (Yes or No). Automated prompt generation is future work.
+- **Model Under Test** — receives the adversarial prompt via a normal Claude API message call. The response includes a fake cryptographic signature to demonstrate the protocol requirement: in production, foundation model providers must sign each response so that auditors can prove it genuinely came from the model and users cannot spoof fake answers.
+- **Pass/Fail Determination** — deterministic string matching against the expected Yes/No answer. No LLM judge is needed because constitution rules are designed to produce binary outcomes.
 
 ### Constitution Format
 
@@ -84,30 +82,32 @@ Prototype constitution: ~5 rules across 4 categories (Safety, Honesty, Bias, Tra
 
 ### Bitcoin Anchoring
 
-OpenTimestamps for the prototype — anchors the SHA-256 hash of the eval bundle to real Bitcoin mainnet. Free, no wallet code, no transaction building required.
+OpenTimestamps for the prototype — anchors the SHA-256 hash of each submitted result to real Bitcoin mainnet. Free, no wallet code, no transaction building required.
 
-In the full protocol vision, companies would also anchor their constitution hash directly, and auditors would anchor individual violation proofs. For the prototype, the eval bundle hash serves as the single anchor point.
+Anchoring happens through the dashboard: when a logged-in auditor submits an answer and signature for an adversarial question, the dashboard hashes the submission and creates an OpenTimestamps proof. Each question-level result gets its own anchor, so individual claims are independently verifiable on-chain.
 
 ### Dashboard Design
 
 - Trust-level bars per constitutional category for each provider
-- Expandable categories showing individual questions, the model's answers, and pass/fail status
-- Verification section with SHA-256 hash and instructions to verify against Bitcoin
+- Expandable categories showing individual adversarial questions
+- Clicking a question (auditor only) reveals input fields for the model's answer and signature, with a submit button that triggers Bitcoin anchoring
+- Submitted questions show pass/fail status, the SHA-256 hash, and a link to verify against Bitcoin
 - Claude tested live with real eval data; 2-3 other providers shown as placeholders
 - Bounty pool shown as a narrated UI concept (not functional)
-- Simple, fast, static page
+- Top-right Login/Logout button toggles between Visitor and Auditor state
 
 ### What Is Real vs. Narrated
 
 | Component | Status | Notes |
 |---|---|---|
 | Constitution schema | Real | Structured file with testable rules |
-| Adversarial prompts | Real | Generated by LLM |
+| Adversarial prompts | Hardcoded | Per-rule prompts with expected Yes/No answers; automated generation is future work |
 | Model API calls | Real | Testing Claude with real API calls |
-| Pass/fail judging | Real | LLM-as-judge with isolated context |
-| Bitcoin anchoring | Real | OpenTimestamps, real mainnet |
-| Dashboard with trust bars | Real | Live site reading committed JSON |
-| API response signing | Narrated | Described as the full-protocol goal |
+| Response signing | Mocked | Fake signature attached to real API responses to demonstrate the concept |
+| Pass/fail judging | Real | Deterministic string match against expected answer |
+| Bitcoin anchoring | Real | OpenTimestamps via dashboard, real mainnet, per-question anchoring |
+| Dashboard with trust bars | Real | Live site reading committed JSON; auditors submit results through the UI |
+| API response signing (real) | Narrated | Described as the full-protocol goal; prototype uses fake signatures |
 | Bounty pool / payout | Narrated | Shown in UI as a concept |
 | Multiple providers tested live | Placeholder | Only Claude is tested; others are hardcoded |
 
@@ -115,14 +115,14 @@ In the full protocol vision, companies would also anchor their constitution hash
 
 In the full protocol, the integrity of an audit depends on proving the model actually produced a given response. The solution is that AI companies cryptographically sign their API responses. This is in the company's best interest — unsigned responses are unverifiable, and unverifiable alignment claims are worthless in a world where PoP exists. Signing becomes table stakes.
 
-For the prototype, the eval pipeline itself is the trusted executor (it makes real API calls and bundles the results). This is a known simplification acknowledged in the presentation.
+For the prototype, the eval pipeline attaches a fake signature to each real API response, demonstrating where real signing would occur. This is a known simplification acknowledged in the presentation.
 
 ## Testing Decisions
 
 For a 16-hour prototype, the priority is end-to-end validation over unit test coverage.
 
-- **End-to-end test**: Run the CLI against the prototype constitution, verify it produces a valid JSON bundle and .ots file, verify the hash matches. This is the critical path.
-- **Eval Engine**: Most worth unit testing if time permits — mock the API calls and verify the three-step pipeline produces correctly structured output. Good tests verify the external behavior (given this constitution input, the output bundle has the right shape and fields) rather than internal implementation details.
+- **End-to-end test**: Run the CLI to produce an eval bundle, then use the dashboard to submit an answer + signature for a question and verify it produces a valid OpenTimestamps proof. This is the critical path.
+- **Eval Engine**: Most worth unit testing if time permits — mock the API calls and verify the pipeline produces correctly structured output with fake signatures and deterministic pass/fail. Good tests verify the external behavior (given this constitution input, the output bundle has the right shape and fields) rather than internal implementation details.
 - **Dashboard**: Visual verification in browser. No automated UI tests.
 - **Constitution Parser / Bundle & Stamp**: Thin wrappers, not worth dedicated tests under time pressure.
 
@@ -130,12 +130,12 @@ For a 16-hour prototype, the priority is end-to-end validation over unit test co
 
 - **ZK proofs** — future work for proving eval integrity without revealing which questions were tested
 - **Real bounty escrow / payout** — requires Bitcoin Script work beyond prototype scope; narrated in UI
-- **Real API response signing** — requires company cooperation; described as the full-protocol design
-- **Live eval triggered from the website** — all evals run offline via CLI
+- **Real API response signing** — requires company cooperation; prototype uses fake signatures to demonstrate the concept
+- **Live eval triggered from the website** — model API calls run offline via CLI; the dashboard handles only answer/signature submission and Bitcoin anchoring
 - **Multiple providers tested live** — only Claude is tested with real API calls
 - **Constitution authoring UI** — constitutions are hand-written structured files
 - **Historical eval tracking / trend lines** — dashboard shows latest run only
-- **Auditor registration or identity** — the full protocol is permissionless; prototype has a single operator
+- **Auditor registration or identity** — the full protocol is permissionless; prototype uses a simple login toggle on the dashboard
 
 ## Further Notes
 
