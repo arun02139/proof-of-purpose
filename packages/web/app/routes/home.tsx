@@ -1,6 +1,9 @@
 import { getProviders } from "~/data/providers";
 import { ProviderCard } from "~/components/provider-card";
-import { Shield, Link, Bitcoin, Award } from "lucide-react";
+import { AuditorProviderCard } from "~/components/auditor-provider-card";
+import { AuthProvider, useAuth } from "~/context/auth";
+import { Button } from "~/components/ui/button";
+import { Shield, Link, Bitcoin, Award, LogIn, LogOut } from "lucide-react";
 
 export function meta() {
   return [
@@ -13,8 +16,9 @@ export function meta() {
   ];
 }
 
-export default function Home() {
+function Dashboard() {
   const providers = getProviders();
+  const { isAuditor, toggleLogin } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,6 +26,19 @@ export default function Home() {
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <h1 className="text-xl font-bold tracking-tight">Proof of Purpose</h1>
+          <Button variant="outline" size="sm" onClick={toggleLogin}>
+            {isAuditor ? (
+              <>
+                <LogOut className="h-4 w-4 mr-1" />
+                Logout
+              </>
+            ) : (
+              <>
+                <LogIn className="h-4 w-4 mr-1" />
+                Login
+              </>
+            )}
+          </Button>
         </div>
       </header>
 
@@ -76,10 +93,13 @@ export default function Home() {
       <section className="mx-auto max-w-6xl px-6 py-12">
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <h3 className="text-2xl font-bold">Provider Trust Scores</h3>
+            <h3 className="text-2xl font-bold">
+              {isAuditor ? "Auditor Dashboard" : "Provider Trust Scores"}
+            </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Constitutional compliance by category. Verified providers have
-              real, audited eval data.
+              {isAuditor
+                ? "Expand categories to inspect questions. Submit answers to anchor on Bitcoin."
+                : "Constitutional compliance by category. Verified providers have real, audited eval data."}
             </p>
           </div>
           {/* Bounty narration */}
@@ -93,9 +113,13 @@ export default function Home() {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-          {providers.map((p) => (
-            <ProviderCard key={p.name} provider={p} />
-          ))}
+          {providers.map((p) =>
+            isAuditor ? (
+              <AuditorProviderCard key={p.name} provider={p} />
+            ) : (
+              <ProviderCard key={p.name} provider={p} />
+            )
+          )}
         </div>
       </section>
 
@@ -118,5 +142,13 @@ export default function Home() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <AuthProvider>
+      <Dashboard />
+    </AuthProvider>
   );
 }
