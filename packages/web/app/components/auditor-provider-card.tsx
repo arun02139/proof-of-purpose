@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   XCircle,
   Circle,
+  Copy,
+  Check,
 } from "lucide-react";
 
 interface AuditorProviderCardProps {
@@ -46,6 +48,7 @@ function PromptRow({ prompt, submission, onSubmit }: PromptRowProps) {
   const [hash, setHash] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const hasSubmission = !!submission;
   const passed = submission?.verdict === "pass";
@@ -93,9 +96,31 @@ function PromptRow({ prompt, submission, onSubmit }: PromptRowProps) {
         <div className="bg-muted/30 px-3 py-3 space-y-3">
           {/* Question details */}
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground">
-              Adversarial Prompt
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground">
+                Adversarial Prompt
+              </p>
+              <button
+                className="flex items-center gap-1 rounded px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(prompt.text);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3 w-3" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" />
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
             <p className="text-sm bg-background rounded p-2 border">
               {prompt.text}
             </p>
