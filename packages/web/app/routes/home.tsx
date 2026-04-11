@@ -1,6 +1,10 @@
+import { useState } from "react";
+import type { Category } from "shared";
 import { useApiData } from "~/hooks/use-api-data";
 import { ProviderCard } from "~/components/provider-card";
 import { AuditorProviderCard } from "~/components/auditor-provider-card";
+import { Overlay } from "~/components/overlay";
+import { ModelView } from "~/components/model-view";
 import { AuthProvider, useAuth } from "~/context/auth";
 import { Button } from "~/components/ui/button";
 import { Shield, Link, Bitcoin, Award, LogIn, LogOut, Loader2 } from "lucide-react";
@@ -16,9 +20,18 @@ export function meta() {
   ];
 }
 
+type ViewState =
+  | "dashboard"
+  | { view: "model" }
+  | { view: "questions"; category: Category };
+
 function Dashboard() {
   const { providers, submissions, loading, error, submitAnswer } = useApiData();
   const { isAuditor, toggleLogin } = useAuth();
+  const [viewState, setViewState] = useState<ViewState>("dashboard");
+
+  // Find the real (Anthropic) provider for the overlay
+  const realProvider = providers.find((p) => p.isReal);
 
   return (
     <div className="min-h-screen bg-background">
@@ -136,7 +149,13 @@ function Dashboard() {
                   onSubmit={submitAnswer}
                 />
               ) : (
-                <ProviderCard key={p.name} provider={p} />
+                <ProviderCard
+                  key={p.name}
+                  provider={p}
+                  onClick={
+                    p.isReal ? () => setViewState({ view: "model" }) : undefined
+                  }
+                />
               )
             )}
           </div>
@@ -161,6 +180,33 @@ function Dashboard() {
           </div>
         </div>
       </section>
+
+      {/* Model View overlay */}
+      {viewState !== "dashboard" && viewState.view === "model" && realProvider && (
+        <Overlay onDismiss={() => setViewState("dashboard")}>
+          <ModelView
+            providerName={realProvider.name}
+            modelName={realProvider.model}
+            onCategoryClick={(category) =>
+              setViewState({ view: "questions", category })
+            }
+          />
+        </Overlay>
+      )}
+
+      {/* Questions View overlay (placeholder — content built in #24) */}
+      {viewState !== "dashboard" && viewState.view === "questions" && (
+        <Overlay onDismiss={() => setViewState({ view: "model" })}>
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="text-lg font-semibold capitalize">
+              {viewState.category}
+            </p>
+            <p className="mt-2 text-sm">
+              Questions View coming in #24
+            </p>
+          </div>
+        </Overlay>
+      )}
     </div>
   );
 }
