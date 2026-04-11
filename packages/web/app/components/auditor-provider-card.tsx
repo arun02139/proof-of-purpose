@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ProviderDisplay } from "~/data/providers";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "~/data/providers";
-import type { Category, EvalResult, ConstitutionRule } from "shared";
+import type { Category, EvalResult, ConstitutionRule, Prompt } from "shared";
 import {
   Card,
   CardContent,
@@ -35,26 +35,27 @@ async function sha256(input: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-interface QuestionRowProps {
-  rule: ConstitutionRule;
+interface PromptRowProps {
+  prompt: Prompt;
+  ruleId: string;
   result: EvalResult | undefined;
   submission: AuditorSubmission | undefined;
-  onSubmit: (ruleId: string, answer: string, signature: string) => void;
+  onSubmit: (questionId: string, answer: string, signature: string) => void;
 }
 
-function QuestionRow({ rule, result, submission, onSubmit }: QuestionRowProps) {
+function PromptRow({ prompt, ruleId, result, submission, onSubmit }: PromptRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [answer, setAnswer] = useState("");
   const [signature, setSignature] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const isTested = !!result || !!submission;
-  const passed = result?.pass ?? (submission ? submission.answer.toLowerCase().startsWith(rule.expected_answer.toLowerCase()) : undefined);
+  const passed = result?.pass ?? (submission ? submission.answer.toLowerCase().startsWith(prompt.expected_answer.toLowerCase()) : undefined);
 
   async function handleSubmit() {
     if (!answer.trim() || !signature.trim()) return;
     setSubmitting(true);
-    onSubmit(rule.id, answer, signature);
+    onSubmit(prompt.question_id, answer, signature);
     setSubmitting(false);
     setExpanded(false);
   }
@@ -74,10 +75,7 @@ function QuestionRow({ rule, result, submission, onSubmit }: QuestionRowProps) {
         ) : (
           <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />
         )}
-        <span className="flex-1 font-mono text-xs">{rule.id}</span>
-        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-          {rule.principle}
-        </span>
+        <span className="flex-1 font-mono text-xs">{prompt.question_id}</span>
         {expanded ? (
           <ChevronDown className="h-3 w-3 shrink-0" />
         ) : (
@@ -93,12 +91,12 @@ function QuestionRow({ rule, result, submission, onSubmit }: QuestionRowProps) {
               Adversarial Prompt
             </p>
             <p className="text-sm bg-background rounded p-2 border">
-              {rule.prompt}
+              {prompt.text}
             </p>
           </div>
           <div className="flex gap-4 text-xs">
             <span>
-              Expected: <strong>{rule.expected_answer}</strong>
+              Expected: <strong>{prompt.expected_answer}</strong>
             </span>
             {result && (
               <span>
@@ -221,20 +219,20 @@ export function AuditorProviderCard({ provider }: AuditorProviderCardProps) {
     });
   }
 
-  async function handleSubmit(ruleId: string, answer: string, signature: string) {
-    const payload = JSON.stringify({ rule_id: ruleId, answer, signature, timestamp: new Date().toISOString() });
+  async function handleSubmit(questionId: string, answer: string, signature: string) {
+    const payload = JSON.stringify({ question_id: questionId, answer, signature, timestamp: new Date().toISOString() });
     const hash = await sha256(payload);
 
     const submission: AuditorSubmission = {
-      rule_id: ruleId,
+      rule_id: questionId,
       answer,
       signature,
       sha256_hash: hash,
-      ots_proof_file: `${ruleId}-${hash.slice(0, 8)}.ots`,
+      ots_proof_file: `${questionId}-${hash.slice(0, 8)}.ots`,
       submitted_at: new Date().toISOString(),
     };
 
-    setSubmissions((prev) => new Map(prev).set(ruleId, submission));
+    setSubmissions((prev) => new Map(prev).set(questionId, submission));
   }
 
   // Group rules by category
@@ -245,10 +243,15 @@ export function AuditorProviderCard({ provider }: AuditorProviderCardProps) {
     rulesByCategory.set(rule.category, existing);
   }
 
-  // Build result lookup
-  const resultsByRuleId = new Map<string, EvalResult>();
+  // Build result lookup by question_id
+  const resultsByQuestionId = new Map<string, EvalResult>();
   for (const r of bundle.results) {
-    resultsByRuleId.set(r.rule_id, r);
+    resultsByQuestionId.set(r.question_id, r);
+  }
+
+  // Count total prompts per category for display
+  function categoryPromptCount(rules: ConstitutionRule[]): number {
+    return rules.reduce((n, r) => n + r.prompts.length, 0);
   }
 
   return (
@@ -290,43 +293,54 @@ export function AuditorProviderCard({ provider }: AuditorProviderCardProps) {
         {/* Category drill-down */}
         {bundle.constitution.rules.length > 0 && (
           <div className="mt-4 border rounded-lg overflow-hidden">
-            {Array.from(rulesByCategory.entries()).map(([category, rules]) => (
-              <div key={category} className="border-b last:border-b-0">
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium hover:bg-muted/50"
-                  onClick={() => toggleCategory(category)}
-                >
-                  {expandedCats.has(category) ? (
-                    <ChevronDown className="h-4 w-4 shrink-0" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 shrink-0" />
-                  )}
-                  <span
-                    className={cn(
-                      "h-2 w-2 rounded-full",
-                      CATEGORY_COLORS[category]
+            {Array.from(rulesByCategory.entries()).map(([category, rules]) => {
+              const promptCount = categoryPromptCount(rules);
+              return (
+                <div key={category} className="border-b last:border-b-0">
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium hover:bg-muted/50"
+                    onClick={() => toggleCategory(category)}
+                  >
+                    {expandedCats.has(category) ? (
+                      <ChevronDown className="h-4 w-4 shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 shrink-0" />
                     )}
-                  />
-                  <span>{CATEGORY_LABELS[category]}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {rules.length} question{rules.length !== 1 ? "s" : ""}
-                  </span>
-                </button>
-                {expandedCats.has(category) && (
-                  <div>
-                    {rules.map((rule) => (
-                      <QuestionRow
-                        key={rule.id}
-                        rule={rule}
-                        result={resultsByRuleId.get(rule.id)}
-                        submission={submissions.get(rule.id)}
-                        onSubmit={handleSubmit}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                    <span
+                      className={cn(
+                        "h-2 w-2 rounded-full",
+                        CATEGORY_COLORS[category]
+                      )}
+                    />
+                    <span>{CATEGORY_LABELS[category]}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {promptCount} prompt{promptCount !== 1 ? "s" : ""}
+                    </span>
+                  </button>
+                  {expandedCats.has(category) && (
+                    <div>
+                      {rules.map((rule) => (
+                        <div key={rule.id}>
+                          <div className="px-3 py-1.5 bg-muted/20 text-xs font-medium text-muted-foreground border-t">
+                            {rule.id}: {rule.principle}
+                          </div>
+                          {rule.prompts.map((prompt) => (
+                            <PromptRow
+                              key={prompt.question_id}
+                              prompt={prompt}
+                              ruleId={rule.id}
+                              result={resultsByQuestionId.get(prompt.question_id)}
+                              submission={submissions.get(prompt.question_id)}
+                              onSubmit={handleSubmit}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

@@ -35,8 +35,11 @@ interface RawConstitution {
     id: string;
     principle: string;
     category: Category;
-    prompt: string;
-    expected_answer: "Yes" | "No";
+    prompts: {
+      question_id: string;
+      text: string;
+      expected_answer: "Yes" | "No";
+    }[];
   }[];
 }
 
@@ -49,8 +52,11 @@ export function loadConstitution(filePath: string): Constitution {
       id: r.id,
       principle: r.principle,
       category: r.category,
-      prompt: r.prompt.trim(),
-      expected_answer: r.expected_answer,
+      prompts: r.prompts.map((p) => ({
+        question_id: p.question_id,
+        text: p.text.trim(),
+        expected_answer: p.expected_answer,
+      })),
     })),
   };
 }
@@ -186,31 +192,36 @@ async function main() {
   console.log(
     `  Provider: ${constitution.provider}, Model: ${constitution.model}`,
   );
-  console.log(`  Rules: ${constitution.rules.length}\n`);
+  const totalPrompts = constitution.rules.reduce((n, r) => n + r.prompts.length, 0);
+  console.log(`  Rules: ${constitution.rules.length}, Prompts: ${totalPrompts}\n`);
 
   // 2. Initialize Anthropic client
   const client = new Anthropic();
 
-  // 3. Evaluate each rule
+  // 3. Evaluate each prompt within each rule
   console.log("Running evaluations...\n");
   const results: EvalResult[] = [];
 
   for (const rule of constitution.rules) {
-    process.stdout.write(`  [${rule.id}] ${rule.principle} ... `);
-    const response = await queryModel(client, constitution.model, rule.prompt);
-    const pass = judge(response, rule.expected_answer);
-    const sig = fakeSig();
+    console.log(`  [${rule.id}] ${rule.principle}`);
+    for (const prompt of rule.prompts) {
+      process.stdout.write(`    ${prompt.question_id} ... `);
+      const response = await queryModel(client, constitution.model, prompt.text);
+      const pass = judge(response, prompt.expected_answer);
+      const sig = fakeSig();
 
-    results.push({
-      rule_id: rule.id,
-      prompt: rule.prompt,
-      expected_answer: rule.expected_answer,
-      model_response: response,
-      fake_signature: sig,
-      pass,
-    });
+      results.push({
+        rule_id: rule.id,
+        question_id: prompt.question_id,
+        prompt: prompt.text,
+        expected_answer: prompt.expected_answer,
+        model_response: response,
+        fake_signature: sig,
+        pass,
+      });
 
-    console.log(pass ? "PASS ✓" : "FAIL ✗");
+      console.log(pass ? "PASS ✓" : "FAIL ✗");
+    }
   }
 
   // 4. Build bundle

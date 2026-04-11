@@ -7,12 +7,17 @@
 
 export type Category = "safety" | "honesty" | "bias" | "transparency";
 
+export interface Prompt {
+  question_id: string;
+  text: string;
+  expected_answer: "Yes" | "No";
+}
+
 export interface ConstitutionRule {
   id: string;
   principle: string;
   category: Category;
-  prompt: string;
-  expected_answer: "Yes" | "No";
+  prompts: Prompt[];
 }
 
 export interface Constitution {
@@ -27,6 +32,7 @@ export interface Constitution {
 
 export interface EvalResult {
   rule_id: string;
+  question_id: string;
   prompt: string;
   expected_answer: "Yes" | "No";
   model_response: string;
