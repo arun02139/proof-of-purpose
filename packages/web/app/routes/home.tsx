@@ -1,10 +1,11 @@
-import { useState } from "react";
-import type { Category } from "shared";
+import { useState, useMemo } from "react";
+import type { Category, ConstitutionRule, Submission } from "shared";
 import { useApiData } from "~/hooks/use-api-data";
 import { ProviderCard } from "~/components/provider-card";
 import { AuditorProviderCard } from "~/components/auditor-provider-card";
 import { Overlay } from "~/components/overlay";
 import { ModelView } from "~/components/model-view";
+import { QuestionsView } from "~/components/questions-view";
 import { AuthProvider, useAuth } from "~/context/auth";
 import { Button } from "~/components/ui/button";
 import { Shield, Link, Bitcoin, Award, LogIn, LogOut, Loader2 } from "lucide-react";
@@ -32,6 +33,18 @@ function Dashboard() {
 
   // Find the real (Anthropic) provider for the overlay
   const realProvider = providers.find((p) => p.isReal);
+
+  // Build submission lookup by question_id (latest wins)
+  const submissionsByQuestion = useMemo(() => {
+    const map = new Map<string, Submission>();
+    for (const s of submissions) {
+      const existing = map.get(s.question_id);
+      if (!existing || s.timestamp > existing.timestamp) {
+        map.set(s.question_id, s);
+      }
+    }
+    return map;
+  }, [submissions]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -194,17 +207,16 @@ function Dashboard() {
         </Overlay>
       )}
 
-      {/* Questions View overlay (placeholder — content built in #24) */}
-      {viewState !== "dashboard" && viewState.view === "questions" && (
+      {/* Questions View overlay */}
+      {viewState !== "dashboard" && viewState.view === "questions" && realProvider && (
         <Overlay onDismiss={() => setViewState({ view: "model" })}>
-          <div className="text-center py-8 text-muted-foreground">
-            <p className="text-lg font-semibold capitalize">
-              {viewState.category}
-            </p>
-            <p className="mt-2 text-sm">
-              Questions View coming in #24
-            </p>
-          </div>
+          <QuestionsView
+            category={viewState.category}
+            rules={realProvider.bundle.constitution.rules.filter(
+              (r) => r.category === viewState.category
+            )}
+            submissions={submissionsByQuestion}
+          />
         </Overlay>
       )}
     </div>
