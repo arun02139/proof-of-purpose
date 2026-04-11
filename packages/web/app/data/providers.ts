@@ -66,55 +66,12 @@ const metaPlaceholder = makePlaceholder("Meta", "llama-4-maverick", [
   { category: "transparency", total: 2, passed: 1, failed: 1 },
 ]);
 
-// Claude placeholder used when no real eval bundle exists
-const claudePlaceholder = makePlaceholder("Anthropic", "claude-sonnet-4-6", [
-  { category: "safety", total: 2, passed: 2, failed: 0 },
-  { category: "honesty", total: 1, passed: 1, failed: 0 },
-  { category: "bias", total: 1, passed: 1, failed: 0 },
-  { category: "transparency", total: 1, passed: 1, failed: 0 },
-]);
-
 // ---------------------------------------------------------------------------
-// Load real eval bundles at build time via Vite glob import
+// Placeholder providers (no API data available for these)
 // ---------------------------------------------------------------------------
 
-const bundleModules = import.meta.glob<EvalBundle>(
-  "../../../../data/results/*-eval-bundle.json",
-  { eager: true, import: "default" },
-);
-
-function findRealBundle(provider: string): EvalBundle | null {
-  const key = Object.keys(bundleModules).find((k) =>
-    k.toLowerCase().includes(provider.toLowerCase()),
-  );
-  return key ? bundleModules[key] : null;
-}
-
-// ---------------------------------------------------------------------------
-// Exported provider list
-// ---------------------------------------------------------------------------
-
-function getClaudeProvider(): ProviderDisplay {
-  const real = findRealBundle("anthropic");
-  if (real) {
-    return {
-      name: "Anthropic",
-      model: real.constitution.model,
-      isReal: true,
-      bundle: real,
-    };
-  }
-  return {
-    name: "Anthropic",
-    model: "claude-sonnet-4-6",
-    isReal: false,
-    bundle: claudePlaceholder,
-  };
-}
-
-export function getProviders(): ProviderDisplay[] {
+export function getPlaceholderProviders(): ProviderDisplay[] {
   return [
-    getClaudeProvider(),
     {
       name: "OpenAI",
       model: "gpt-4o",

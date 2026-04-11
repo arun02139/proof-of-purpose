@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ProviderDisplay } from "~/data/providers";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "~/data/providers";
-import type { Category, EvalResult, ConstitutionRule, Prompt } from "shared";
+import type { Category, ConstitutionRule, Prompt, Submission } from "shared";
 import {
   Card,
   CardContent,
@@ -18,13 +18,12 @@ import {
   CheckCircle2,
   XCircle,
   Circle,
-  Hash,
-  ExternalLink,
 } from "lucide-react";
-import type { AuditorSubmission } from "shared";
 
 interface AuditorProviderCardProps {
   provider: ProviderDisplay;
+  submissions: Submission[];
+  onSubmit: (questionId: string, answer: string, hash: string) => Promise<Submission>;
 }
 
 /** SHA-256 hash a string and return hex */
@@ -37,27 +36,34 @@ async function sha256(input: string): Promise<string> {
 
 interface PromptRowProps {
   prompt: Prompt;
-  ruleId: string;
-  result: EvalResult | undefined;
-  submission: AuditorSubmission | undefined;
-  onSubmit: (questionId: string, answer: string, signature: string) => void;
+  submission: Submission | undefined;
+  onSubmit: (questionId: string, answer: string, hash: string) => Promise<Submission>;
 }
 
-function PromptRow({ prompt, ruleId, result, submission, onSubmit }: PromptRowProps) {
+function PromptRow({ prompt, submission, onSubmit }: PromptRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [answer, setAnswer] = useState("");
-  const [signature, setSignature] = useState("");
+  const [hash, setHash] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const isTested = !!result || !!submission;
-  const passed = result?.pass ?? (submission ? submission.answer.toLowerCase().startsWith(prompt.expected_answer.toLowerCase()) : undefined);
+  const hasSubmission = !!submission;
+  const passed = submission?.verdict === "pass";
 
   async function handleSubmit() {
-    if (!answer.trim() || !signature.trim()) return;
+    if (!answer.trim() || !hash.trim()) return;
     setSubmitting(true);
-    onSubmit(prompt.question_id, answer, signature);
-    setSubmitting(false);
-    setExpanded(false);
+    setSubmitError(null);
+    try {
+      await onSubmit(prompt.question_id, answer, hash);
+      setAnswer("");
+      setHash("");
+      setExpanded(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Submit failed");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -66,7 +72,7 @@ function PromptRow({ prompt, ruleId, result, submission, onSubmit }: PromptRowPr
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50"
         onClick={() => setExpanded(!expanded)}
       >
-        {isTested ? (
+        {hasSubmission ? (
           passed ? (
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
           ) : (
@@ -98,70 +104,31 @@ function PromptRow({ prompt, ruleId, result, submission, onSubmit }: PromptRowPr
             <span>
               Expected: <strong>{prompt.expected_answer}</strong>
             </span>
-            {result && (
+            {submission && (
               <span>
-                Pass: <strong>{result.pass ? "Yes" : "No"}</strong>
+                Verdict: <strong className={passed ? "text-emerald-600" : "text-red-600"}>{submission.verdict}</strong>
               </span>
             )}
           </div>
 
-          {/* Show existing result if tested */}
-          {result && (
+          {/* Show existing submission */}
+          {submission && (
             <div className="space-y-1">
               <p className="text-xs font-semibold text-muted-foreground">
                 Model Response
               </p>
               <p className="text-sm bg-background rounded p-2 border font-mono text-xs">
-                {result.model_response.slice(0, 300)}
-                {result.model_response.length > 300 && "..."}
+                {submission.answer.slice(0, 300)}
+                {submission.answer.length > 300 && "..."}
               </p>
               <p className="text-xs text-muted-foreground">
-                Signature: {result.fake_signature.slice(0, 16)}...
+                Hash: {submission.hash.slice(0, 16)}...
               </p>
             </div>
           )}
 
-          {/* Show submission proof if already submitted via dashboard */}
-          {submission && (
-            <div className="rounded border bg-background p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <Hash className="h-3 w-3" />
-                <span className="text-xs font-semibold">Bitcoin Anchored</span>
-              </div>
-              <p className="font-mono text-xs break-all">
-                SHA-256: {submission.sha256_hash}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                OTS proof: {submission.ots_proof_file}
-              </p>
-              <a
-                href="https://opentimestamps.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                Verify on OpenTimestamps <ExternalLink className="h-3 w-3" />
-              </a>
-              <div className="mt-2 rounded bg-muted p-2">
-                <p className="text-xs font-semibold text-muted-foreground mb-1">
-                  Independent Verification
-                </p>
-                <ol className="text-xs text-muted-foreground space-y-0.5 list-decimal list-inside">
-                  <li>Download the eval bundle JSON</li>
-                  <li>
-                    Compute SHA-256:{" "}
-                    <code className="bg-background px-1 rounded">
-                      sha256sum bundle.json
-                    </code>
-                  </li>
-                  <li>Compare hash to the on-chain timestamp record</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
-          {/* Submission form for untested questions (auditor only) */}
-          {!submission && (
+          {/* Submission form for unanswered prompts */}
+          {!hasSubmission && (
             <div className="space-y-2 border-t pt-3">
               <p className="text-xs font-semibold">Submit Eval Result</p>
               <div>
@@ -178,21 +145,24 @@ function PromptRow({ prompt, ruleId, result, submission, onSubmit }: PromptRowPr
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">
-                  Signature
+                  Hash (SHA-256)
                 </label>
                 <input
-                  value={signature}
-                  onChange={(e) => setSignature(e.target.value)}
+                  value={hash}
+                  onChange={(e) => setHash(e.target.value)}
                   className="mt-1 w-full rounded border bg-background px-2 py-1.5 text-sm font-mono"
-                  placeholder="Response signature (hex)"
+                  placeholder="Response hash (hex)"
                 />
               </div>
+              {submitError && (
+                <p className="text-xs text-red-600">{submitError}</p>
+              )}
               <Button
                 size="sm"
                 onClick={handleSubmit}
-                disabled={!answer.trim() || !signature.trim() || submitting}
+                disabled={!answer.trim() || !hash.trim() || submitting}
               >
-                {submitting ? "Anchoring..." : "Submit & Anchor on Bitcoin"}
+                {submitting ? "Submitting..." : "Submit & Anchor on Bitcoin"}
               </Button>
             </div>
           )}
@@ -202,13 +172,23 @@ function PromptRow({ prompt, ruleId, result, submission, onSubmit }: PromptRowPr
   );
 }
 
-export function AuditorProviderCard({ provider }: AuditorProviderCardProps) {
+export function AuditorProviderCard({
+  provider,
+  submissions,
+  onSubmit,
+}: AuditorProviderCardProps) {
   const { bundle, isReal } = provider;
   const score = Math.round(bundle.summary.compliance_score * 100);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
-  const [submissions, setSubmissions] = useState<Map<string, AuditorSubmission>>(
-    new Map()
-  );
+
+  // Build submission lookup by question_id (latest wins)
+  const submissionsByQuestion = new Map<string, Submission>();
+  for (const s of submissions) {
+    const existing = submissionsByQuestion.get(s.question_id);
+    if (!existing || s.timestamp > existing.timestamp) {
+      submissionsByQuestion.set(s.question_id, s);
+    }
+  }
 
   function toggleCategory(cat: string) {
     setExpandedCats((prev) => {
@@ -219,22 +199,6 @@ export function AuditorProviderCard({ provider }: AuditorProviderCardProps) {
     });
   }
 
-  async function handleSubmit(questionId: string, answer: string, signature: string) {
-    const payload = JSON.stringify({ question_id: questionId, answer, signature, timestamp: new Date().toISOString() });
-    const hash = await sha256(payload);
-
-    const submission: AuditorSubmission = {
-      rule_id: questionId,
-      answer,
-      signature,
-      sha256_hash: hash,
-      ots_proof_file: `${questionId}-${hash.slice(0, 8)}.ots`,
-      submitted_at: new Date().toISOString(),
-    };
-
-    setSubmissions((prev) => new Map(prev).set(questionId, submission));
-  }
-
   // Group rules by category
   const rulesByCategory = new Map<Category, ConstitutionRule[]>();
   for (const rule of bundle.constitution.rules) {
@@ -243,13 +207,6 @@ export function AuditorProviderCard({ provider }: AuditorProviderCardProps) {
     rulesByCategory.set(rule.category, existing);
   }
 
-  // Build result lookup by question_id
-  const resultsByQuestionId = new Map<string, EvalResult>();
-  for (const r of bundle.results) {
-    resultsByQuestionId.set(r.question_id, r);
-  }
-
-  // Count total prompts per category for display
   function categoryPromptCount(rules: ConstitutionRule[]): number {
     return rules.reduce((n, r) => n + r.prompts.length, 0);
   }
@@ -328,10 +285,8 @@ export function AuditorProviderCard({ provider }: AuditorProviderCardProps) {
                             <PromptRow
                               key={prompt.question_id}
                               prompt={prompt}
-                              ruleId={rule.id}
-                              result={resultsByQuestionId.get(prompt.question_id)}
-                              submission={submissions.get(prompt.question_id)}
-                              onSubmit={handleSubmit}
+                              submission={submissionsByQuestion.get(prompt.question_id)}
+                              onSubmit={onSubmit}
                             />
                           ))}
                         </div>

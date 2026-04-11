@@ -1,9 +1,9 @@
-import { getProviders } from "~/data/providers";
+import { useApiData } from "~/hooks/use-api-data";
 import { ProviderCard } from "~/components/provider-card";
 import { AuditorProviderCard } from "~/components/auditor-provider-card";
 import { AuthProvider, useAuth } from "~/context/auth";
 import { Button } from "~/components/ui/button";
-import { Shield, Link, Bitcoin, Award, LogIn, LogOut } from "lucide-react";
+import { Shield, Link, Bitcoin, Award, LogIn, LogOut, Loader2 } from "lucide-react";
 
 export function meta() {
   return [
@@ -17,7 +17,7 @@ export function meta() {
 }
 
 function Dashboard() {
-  const providers = getProviders();
+  const { providers, submissions, loading, error, submitAnswer } = useApiData();
   const { isAuditor, toggleLogin } = useAuth();
 
   return (
@@ -112,15 +112,35 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
-          {providers.map((p) =>
-            isAuditor ? (
-              <AuditorProviderCard key={p.name} provider={p} />
-            ) : (
-              <ProviderCard key={p.name} provider={p} />
-            )
-          )}
-        </div>
+        {loading && (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading dashboard data...</span>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            Failed to load data: {error}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
+            {providers.map((p) =>
+              isAuditor ? (
+                <AuditorProviderCard
+                  key={p.name}
+                  provider={p}
+                  submissions={submissions}
+                  onSubmit={submitAnswer}
+                />
+              ) : (
+                <ProviderCard key={p.name} provider={p} />
+              )
+            )}
+          </div>
+        )}
       </section>
 
       {/* Bitcoin permanence footer */}
