@@ -10,19 +10,17 @@ import { TrustBar } from "~/components/trust-bar";
 
 interface ProviderCardProps {
   provider: ProviderDisplay;
+  onClick?: () => void;
 }
 
-export function ProviderCard({ provider }: ProviderCardProps) {
+export function ProviderCard({ provider, onClick }: ProviderCardProps) {
   const { bundle, isReal } = provider;
   const score = Math.round(bundle.summary.compliance_score * 100);
 
   return (
     <Card
-      className={
-        isReal
-          ? "border-2 border-primary ring-1 ring-primary/20"
-          : "opacity-75"
-      }
+      className={`${isReal ? "" : "opacity-75"} ${onClick ? "cursor-pointer transition-shadow hover:shadow-md" : ""}`}
+      onClick={onClick}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">

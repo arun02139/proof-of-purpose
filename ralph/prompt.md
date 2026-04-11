@@ -41,8 +41,6 @@ Before committing, run the feedback loops:
 - `pnpm run test` to run the tests
 - `pnpm run typecheck` to run the type checker
 
-Note: No feedback loops available yet — skip this step until pnpm is bootstrapped.
-
 # COMMIT
 
 Make a git commit. The commit message must:

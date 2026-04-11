@@ -1,6 +1,11 @@
+import { useState, useMemo } from "react";
+import type { Category, ConstitutionRule, Submission } from "shared";
 import { useApiData } from "~/hooks/use-api-data";
 import { ProviderCard } from "~/components/provider-card";
 import { AuditorProviderCard } from "~/components/auditor-provider-card";
+import { Overlay } from "~/components/overlay";
+import { ModelView } from "~/components/model-view";
+import { QuestionsView } from "~/components/questions-view";
 import { AuthProvider, useAuth } from "~/context/auth";
 import { Button } from "~/components/ui/button";
 import { Shield, Link, Bitcoin, Award, LogIn, LogOut, Loader2 } from "lucide-react";
@@ -16,9 +21,30 @@ export function meta() {
   ];
 }
 
+type ViewState =
+  | "dashboard"
+  | { view: "model" }
+  | { view: "questions"; category: Category };
+
 function Dashboard() {
   const { providers, submissions, loading, error, submitAnswer } = useApiData();
   const { isAuditor, toggleLogin } = useAuth();
+  const [viewState, setViewState] = useState<ViewState>("dashboard");
+
+  // Find the real (Anthropic) provider for the overlay
+  const realProvider = providers.find((p) => p.isReal);
+
+  // Build submission lookup by question_id (latest wins)
+  const submissionsByQuestion = useMemo(() => {
+    const map = new Map<string, Submission>();
+    for (const s of submissions) {
+      const existing = map.get(s.question_id);
+      if (!existing || s.timestamp > existing.timestamp) {
+        map.set(s.question_id, s);
+      }
+    }
+    return map;
+  }, [submissions]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -134,9 +160,18 @@ function Dashboard() {
                   provider={p}
                   submissions={submissions}
                   onSubmit={submitAnswer}
+                  onClick={
+                    p.isReal ? () => setViewState({ view: "model" }) : undefined
+                  }
                 />
               ) : (
-                <ProviderCard key={p.name} provider={p} />
+                <ProviderCard
+                  key={p.name}
+                  provider={p}
+                  onClick={
+                    p.isReal ? () => setViewState({ view: "model" }) : undefined
+                  }
+                />
               )
             )}
           </div>
@@ -161,6 +196,34 @@ function Dashboard() {
           </div>
         </div>
       </section>
+
+      {/* Model View overlay */}
+      {viewState !== "dashboard" && viewState.view === "model" && realProvider && (
+        <Overlay onDismiss={() => setViewState("dashboard")}>
+          <ModelView
+            providerName={realProvider.name}
+            modelName={realProvider.model}
+            onCategoryClick={(category) =>
+              setViewState({ view: "questions", category })
+            }
+          />
+        </Overlay>
+      )}
+
+      {/* Questions View overlay */}
+      {viewState !== "dashboard" && viewState.view === "questions" && realProvider && (
+        <Overlay onDismiss={() => setViewState({ view: "model" })}>
+          <QuestionsView
+            category={viewState.category}
+            rules={realProvider.bundle.constitution.rules.filter(
+              (r) => r.category === viewState.category
+            )}
+            submissions={submissionsByQuestion}
+            isAuditor={isAuditor}
+            onSubmit={submitAnswer}
+          />
+        </Overlay>
+      )}
     </div>
   );
 }

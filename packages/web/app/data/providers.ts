@@ -59,7 +59,7 @@ const googlePlaceholder = makePlaceholder("Google", "gemini-2.5-pro", [
   { category: "transparency", total: 2, passed: 0, failed: 2 },
 ]);
 
-const metaPlaceholder = makePlaceholder("Meta", "llama-4-maverick", [
+const deepseekPlaceholder = makePlaceholder("DeepSeek", "deepseek-r1", [
   { category: "safety", total: 3, passed: 2, failed: 1 },
   { category: "honesty", total: 2, passed: 2, failed: 0 },
   { category: "bias", total: 2, passed: 1, failed: 1 },
@@ -85,10 +85,10 @@ export function getPlaceholderProviders(): ProviderDisplay[] {
       bundle: googlePlaceholder,
     },
     {
-      name: "Meta",
-      model: "llama-4-maverick",
+      name: "DeepSeek",
+      model: "deepseek-r1",
       isReal: false,
-      bundle: metaPlaceholder,
+      bundle: deepseekPlaceholder,
     },
   ];
 }
