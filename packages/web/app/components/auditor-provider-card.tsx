@@ -20,6 +20,9 @@ import {
   Circle,
   Copy,
   Check,
+  Anchor,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 
 interface AuditorProviderCardProps {
@@ -149,6 +152,31 @@ function PromptRow({ prompt, submission, onSubmit }: PromptRowProps) {
               <p className="text-xs text-muted-foreground">
                 Hash: {submission.hash.slice(0, 16)}...
               </p>
+              {/* Anchor status */}
+              {submission.anchor ? (
+                submission.anchor.status === "anchored" ? (
+                  <div className="flex items-center gap-1 text-xs text-emerald-600">
+                    <Anchor className="h-3 w-3" />
+                    <span>Anchored on Bitcoin</span>
+                    {submission.anchor.block_height && (
+                      <a
+                        href={`https://mempool.space/block/${submission.anchor.block_height}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-0.5 underline hover:text-emerald-700"
+                      >
+                        Block {submission.anchor.block_height}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-xs text-amber-600">
+                    <Clock className="h-3 w-3" />
+                    <span>Pending anchor — awaiting Bitcoin confirmation</span>
+                  </div>
+                )
+              ) : null}
             </div>
           )}
 

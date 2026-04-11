@@ -7,6 +7,11 @@ import {
 } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  execFile,
+  execFileSync,
+  type ExecFileException,
+} from "node:child_process";
 import express from "express";
 import cors from "cors";
 import yaml from "js-yaml";
@@ -54,6 +59,52 @@ function loadConstitution(filePath: string): Constitution {
 const DEFAULT_DATA_DIR =
   process.env.NODE_ENV === "production" ? "/data" : resolve(REPO_ROOT, "data");
 
+/**
+ * Fire-and-forget: shell out to `ots stamp <file>`.
+ * Best-effort — submission succeeds even if ots is unavailable.
+ */
+function stampFile(filePath: string): void {
+  execFile("ots", ["stamp", filePath], (err: ExecFileException | null) => {
+    if (err) {
+      console.error(`OTS stamp failed for ${filePath}: ${err.message}`);
+    } else {
+      console.log(`OTS stamp created: ${filePath}.ots`);
+    }
+  });
+}
+
+/**
+ * Check anchor status for a submission JSON file.
+ * Returns anchor info if a .ots proof file exists, undefined otherwise.
+ */
+function getAnchorStatus(
+  jsonPath: string,
+): Submission["anchor"] {
+  const otsPath = jsonPath + ".ots";
+  if (!existsSync(otsPath)) return undefined;
+
+  // .ots file exists — at minimum it's pending
+  // Try to detect if it's been upgraded (anchored on Bitcoin)
+  try {
+    const info = execFileSync("ots", ["info", otsPath], {
+      encoding: "utf-8",
+      timeout: 5000,
+    });
+    if (info.includes("BitcoinBlockHeaderAttestation")) {
+      // Extract block height from output like "Bitcoin block height 123456"
+      const match = info.match(/block height (\d+)/i);
+      return {
+        status: "anchored",
+        block_height: match ? parseInt(match[1], 10) : undefined,
+      };
+    }
+  } catch {
+    // ots binary not available or timed out — just report pending
+  }
+
+  return { status: "pending" };
+}
+
 export function createApp(dataDir?: string): express.Express {
   const app = express();
   const submissionsDir = resolve(
@@ -89,9 +140,17 @@ export function createApp(dataDir?: string): express.Express {
       const files = readdirSync(submissionsDir).filter((f) =>
         f.endsWith(".json"),
       );
-      const submissions: Submission[] = files.map((f) =>
-        JSON.parse(readFileSync(resolve(submissionsDir, f), "utf-8")),
-      );
+      const submissions: Submission[] = files.map((f) => {
+        const filePath = resolve(submissionsDir, f);
+        const submission: Submission = JSON.parse(
+          readFileSync(filePath, "utf-8"),
+        );
+        const anchor = getAnchorStatus(filePath);
+        if (anchor) {
+          submission.anchor = anchor;
+        }
+        return submission;
+      });
       res.json(submissions);
     } catch (err) {
       console.error("Failed to read submissions:", err);
@@ -145,10 +204,11 @@ export function createApp(dataDir?: string): express.Express {
       // Write to disk
       mkdirSync(submissionsDir, { recursive: true });
       const filename = `${question_id}-${Date.now()}.json`;
-      writeFileSync(
-        resolve(submissionsDir, filename),
-        JSON.stringify(submission, null, 2),
-      );
+      const filePath = resolve(submissionsDir, filename);
+      writeFileSync(filePath, JSON.stringify(submission, null, 2));
+
+      // Best-effort OTS stamping (fire-and-forget)
+      stampFile(filePath);
 
       res.status(201).json(submission);
     } catch (err) {

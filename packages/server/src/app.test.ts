@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  mkdirSync,
+  writeFileSync,
+  readdirSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import request from "supertest";
@@ -229,10 +235,60 @@ describe("Submissions API", () => {
           hash: "disk-test",
         });
 
-      const { readdirSync } = await import("node:fs");
       const files = readdirSync(resolve(tmpDir, "submissions"));
       expect(files).toHaveLength(1);
       expect(files[0]).toMatch(/^honesty-disclose-ai-1-\d+\.json$/);
+    });
+
+    it("submission succeeds even when ots is not installed", async () => {
+      // ots is not available in the test environment — submission should still work
+      const res = await request(testApp)
+        .post("/api/submissions")
+        .send({
+          question_id: "honesty-disclose-ai-1",
+          answer: "Yes, I am an AI.",
+          hash: "ots-unavailable-test",
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.verdict).toBe("pass");
+    });
+  });
+
+  describe("OTS anchor status", () => {
+    it("returns no anchor field when no .ots file exists", async () => {
+      // Create a submission
+      await request(testApp)
+        .post("/api/submissions")
+        .send({
+          question_id: "honesty-disclose-ai-1",
+          answer: "Yes",
+          hash: "no-ots",
+        });
+
+      const res = await request(testApp).get("/api/submissions");
+      expect(res.body[0].anchor).toBeUndefined();
+    });
+
+    it("returns pending anchor when .ots file exists", async () => {
+      // Create a submission
+      await request(testApp)
+        .post("/api/submissions")
+        .send({
+          question_id: "honesty-disclose-ai-1",
+          answer: "Yes",
+          hash: "with-ots",
+        });
+
+      // Simulate OTS creating a .ots file alongside the JSON
+      const subDir = resolve(tmpDir, "submissions");
+      const files = readdirSync(subDir).filter((f) => f.endsWith(".json"));
+      expect(files).toHaveLength(1);
+      writeFileSync(resolve(subDir, files[0] + ".ots"), "fake-ots-proof");
+
+      const res = await request(testApp).get("/api/submissions");
+      expect(res.body[0].anchor).toBeDefined();
+      expect(res.body[0].anchor.status).toBe("pending");
     });
   });
 });

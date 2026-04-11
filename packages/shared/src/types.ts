@@ -85,4 +85,8 @@ export interface Submission {
   hash: string;
   verdict: "pass" | "fail";
   timestamp: string;
+  anchor?: {
+    status: "pending" | "anchored";
+    block_height?: number;
+  };
 }
