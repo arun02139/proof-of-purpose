@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build && pnpm --filter server build",
-    "start": "node packages/server/dist/index.js",
+    "start": "npx tsx packages/server/src/index.ts",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck"
   },
