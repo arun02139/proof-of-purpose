@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import request from "supertest";
@@ -75,6 +75,27 @@ describe("unknown routes", () => {
   it("returns 404 for unknown API routes", async () => {
     const res = await request(app).get("/api/nonexistent");
     expect(res.status).toBe(404);
+  });
+});
+
+describe("Static file serving", () => {
+  it("serves index.html at the root path", async () => {
+    const res = await request(app).get("/");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/html/);
+  });
+
+  it("API routes take precedence over static files", async () => {
+    const res = await request(app).get("/api/constitution");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/json/);
+    expect(res.body.provider).toBe("Anthropic");
+  });
+
+  it("SPA fallback: unknown non-API routes serve index.html", async () => {
+    const res = await request(app).get("/some/deep/route");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/html/);
   });
 });
 

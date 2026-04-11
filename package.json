@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build && pnpm --filter server build",
+    "start": "node packages/server/dist/index.js",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck"
   },

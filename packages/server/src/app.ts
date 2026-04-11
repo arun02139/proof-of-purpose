@@ -16,6 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = resolve(__dirname, "..", "..", "..");
 const CONSTITUTIONS_DIR = resolve(REPO_ROOT, "data", "constitutions");
+const WEB_BUILD_DIR = resolve(REPO_ROOT, "packages", "web", "build", "client");
 
 interface RawConstitution {
   provider: string;
@@ -50,10 +51,13 @@ function loadConstitution(filePath: string): Constitution {
   };
 }
 
+const DEFAULT_DATA_DIR =
+  process.env.NODE_ENV === "production" ? "/data" : resolve(REPO_ROOT, "data");
+
 export function createApp(dataDir?: string): express.Express {
   const app = express();
   const submissionsDir = resolve(
-    dataDir ?? process.env.DATA_DIR ?? resolve(REPO_ROOT, "data"),
+    dataDir ?? process.env.DATA_DIR ?? DEFAULT_DATA_DIR,
     "submissions",
   );
 
@@ -152,6 +156,16 @@ export function createApp(dataDir?: string): express.Express {
       res.status(500).json({ error: "Failed to create submission" });
     }
   });
+
+  // Static file serving for the web dashboard (production)
+  if (existsSync(WEB_BUILD_DIR)) {
+    app.use(express.static(WEB_BUILD_DIR));
+
+    // SPA fallback: non-API routes serve index.html for client-side routing
+    app.get(/^(?!\/api\/).*/, (_req, res) => {
+      res.sendFile(resolve(WEB_BUILD_DIR, "index.html"));
+    });
+  }
 
   return app;
 }
