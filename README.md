@@ -1,4 +1,4 @@
-# Proof-of-Alignment
+# Proof-of-Purpose
 
 Verifiable AI constitutions, anchored on Bitcoin.
 
@@ -10,7 +10,7 @@ Every person will soon have an AI advisor managing their finances, health, caree
 
 ## The Solution
 
-Proof-of-Alignment is a system that:
+Proof-of-Purpose is a system that:
 
 1. Takes a machine-readable **constitution** (the rules an AI company claims to follow)
 2. Runs an **eval pipeline** that tests the model against those rules with adversarial prompts
@@ -103,7 +103,7 @@ A single-page public dashboard showing:
 ## Monorepo Structure
 
 ```
-proof-of-alignment/
+proof-of-purpose/
 ├── packages/
 │   ├── cli/                  # Eval pipeline
 │   │   ├── src/

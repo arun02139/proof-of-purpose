@@ -1,4 +1,4 @@
-# PRD: Proof-of-Alignment Hackathon Prototype
+# PRD: Proof-of-Purpose Hackathon Prototype
 
 MIT Bitcoin Hackathon 2026 — April 12-13 (2-day build)
 
@@ -6,7 +6,7 @@ MIT Bitcoin Hackathon 2026 — April 12-13 (2-day build)
 
 Every person will soon have an AI advisor managing their finances, health, career, and political understanding. The company that runs your AI can subtly tweak a dial of influence — argue for a candidate, nudge purchases, shape beliefs. Foreign intelligence operatives have already been caught inside major AI labs, where a single insider can poison training data or plant a backdoor.
 
-AI companies publish constitutions and safety policies, but there is no way to verify they actually follow them. "Trust us" is the current standard of evidence. Publishing a constitution is not enough — the world needs Proof-of-Alignment.
+AI companies publish constitutions and safety policies, but there is no way to verify they actually follow them. "Trust us" is the current standard of evidence. Publishing a constitution is not enough — the world needs Proof-of-Purpose.
 
 ## Solution
 

@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-Before any domain-specific logic can be built, the repository needs a working monorepo with the chosen tech stack wired up end-to-end. Currently the repo contains only documentation and an example JSON file — there is no runnable code, no package manager configuration, and no dev server.
+Before any domain-specific logic can be built, the repository needs a working monorepo with the chosen tech stack wired up end-to-end. Currently the repo contains only documentation, a few scripts, and an example JSON file — there is no runnable code, no package manager configuration, and no dev server.
 
 ## Solution
 
@@ -25,7 +25,7 @@ Set up a pnpm workspace monorepo with two packages (CLI and web dashboard), inst
 ### Monorepo Layout
 
 ```
-proof-of-alignment/
+proof-of-purpose/
 ├── packages/
 │   ├── cli/                  # Eval pipeline (future)
 │   │   ├── src/
@@ -34,8 +34,13 @@ proof-of-alignment/
 │   │   └── tsconfig.json
 │   └── web/                  # Dashboard
 │       ├── app/
-│       │   └── routes/       # React Router route files
+│       │   ├── routes/       # React Router route files
+│       │   ├── lib/
+│       │   │   └── utils.ts  # cn() class-merge utility (shadcn dep)
+│       │   └── app.css       # Tailwind v4 config + shadcn theme tokens
 │       ├── public/
+│       ├── components.json   # shadcn/ui configuration
+│       ├── react-router.config.ts
 │       ├── package.json
 │       ├── tsconfig.json
 │       └── vite.config.ts
@@ -57,8 +62,33 @@ proof-of-alignment/
 | AI SDK | @anthropic-ai/sdk | Latest stable (CLI package only) |
 | Web framework | React Router v7 + Vite | Latest stable |
 | UI | Tailwind CSS 4 + shadcn/ui | Tailwind v4, latest shadcn |
+| Tailwind Vite plugin | @tailwindcss/vite | Required for Tailwind v4 (replaces PostCSS) |
+| React Router Vite plugin | @react-router/dev | Required for React Router v7 + Vite integration |
+| Path resolution | vite-tsconfig-paths | Resolves tsconfig path aliases in Vite |
+| shadcn utilities | clsx, class-variance-authority, tailwind-merge, tw-animate-css | Required by shadcn/ui components |
+| Icons | lucide-react | Icon library used by shadcn/ui |
 | Deployment | Vercel (static) | Not configured in bootstrap — future |
 | Bitcoin | OpenTimestamps CLI | System dependency, not npm |
+
+### Tailwind CSS 4 Setup
+
+No `tailwind.config.js` — Tailwind v4 configures entirely in CSS via `@import "tailwindcss"` and `@theme` directives in `app/app.css`. Uses the `@tailwindcss/vite` plugin (not PostCSS).
+
+### shadcn/ui Setup
+
+Requires `components.json` in the web package root (style: `"new-york"`, `rsc: false`, path aliases matching tsconfig). The `cn()` utility (`clsx` + `tailwind-merge`) at `app/lib/utils.ts` is required by all shadcn components. Additional dependencies: `clsx`, `class-variance-authority`, `tailwind-merge`, `lucide-react`, `tw-animate-css`.
+
+### React Router v7 Static Mode
+
+`react-router.config.ts` with `ssr: false`. The dashboard is a client-rendered SPA — no server-side rendering, no loaders, no actions. Produces `index.html` + JS bundles for static hosting.
+
+### Vite Plugins
+
+Three plugins in order: `tailwindcss()` from `@tailwindcss/vite`, `reactRouter()` from `@react-router/dev/vite`, `tsconfigPaths()` from `vite-tsconfig-paths`.
+
+### Path Aliases
+
+Web package tsconfig: `~/*` → `./app/*` for clean imports. CLI package: flat `src/` structure, no alias needed.
 
 ### What the Placeholder Page Should Show
 
