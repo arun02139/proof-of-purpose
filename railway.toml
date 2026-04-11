@@ -1,8 +1,8 @@
 [build]
-buildCommand = "pipx install opentimestamps-client && npm install -g pnpm && pnpm install && pnpm run build"
+buildCommand = "pnpm install && pnpm run build"
 
 [deploy]
-startCommand = "node packages/server/dist/index.js"
+startCommand = "npx tsx packages/server/src/index.ts"
 
 [deploy.healthcheck]
 path = "/api/constitution"
