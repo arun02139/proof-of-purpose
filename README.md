@@ -100,6 +100,43 @@ A single-page public dashboard showing:
 | Deployment        | Vercel                          | One-click static deploy, clean URL            |
 | Bitcoin           | OpenTimestamps                  | Free, real mainnet, no wallet code            |
 
+## Prerequisites
+
+### Node.js and pnpm
+
+Install [Node.js](https://nodejs.org/) (v20+) and [pnpm](https://pnpm.io/):
+
+```bash
+pnpm install        # install all workspace dependencies
+pnpm dev             # start the web dashboard dev server
+pnpm typecheck       # type-check all packages
+```
+
+### OpenTimestamps CLI (`ots`)
+
+The OpenTimestamps CLI is a **system-level Python dependency** — it is not managed by pnpm and is not listed in any `package.json`.
+
+The CLI pipeline shells out to `ots` to anchor eval bundle hashes on Bitcoin mainnet. OpenTimestamps provides free, trustless timestamping: it proves a file existed at a specific point in time by anchoring its SHA-256 hash in a Bitcoin transaction. This is how Proof-of-Purpose makes eval results tamper-evident.
+
+Install via [pipx](https://pipx.pypa.io/) (recommended) or pip:
+
+```bash
+pipx install opentimestamps-client
+```
+
+Verify the installation:
+
+```bash
+ots --version
+```
+
+Usage (run from the repo root):
+
+```bash
+ots stamp eval-bundle-example.json    # anchor hash on Bitcoin
+ots verify eval-bundle-example.json   # verify the timestamp
+```
+
 ## Monorepo Structure
 
 ```
