@@ -29,6 +29,7 @@ interface AuditorProviderCardProps {
   provider: ProviderDisplay;
   submissions: Submission[];
   onSubmit: (questionId: string, answer: string, hash: string) => Promise<Submission>;
+  onClick?: () => void;
 }
 
 /** SHA-256 hash a string and return hex */
@@ -229,6 +230,7 @@ export function AuditorProviderCard({
   provider,
   submissions,
   onSubmit,
+  onClick,
 }: AuditorProviderCardProps) {
   const { bundle, isReal } = provider;
   const score = Math.round(bundle.summary.compliance_score * 100);
@@ -266,7 +268,8 @@ export function AuditorProviderCard({
 
   return (
     <Card
-      className={isReal ? "" : "opacity-75"}
+      className={cn(isReal ? "" : "opacity-75", onClick && "cursor-pointer")}
+      onClick={onClick}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">

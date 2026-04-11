@@ -160,6 +160,9 @@ function Dashboard() {
                   provider={p}
                   submissions={submissions}
                   onSubmit={submitAnswer}
+                  onClick={
+                    p.isReal ? () => setViewState({ view: "model" }) : undefined
+                  }
                 />
               ) : (
                 <ProviderCard
@@ -216,6 +219,8 @@ function Dashboard() {
               (r) => r.category === viewState.category
             )}
             submissions={submissionsByQuestion}
+            isAuditor={isAuditor}
+            onSubmit={submitAnswer}
           />
         </Overlay>
       )}
