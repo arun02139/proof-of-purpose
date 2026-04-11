@@ -20,7 +20,8 @@
     "react-dom": "^19",
     "react-router": "^7",
     "tailwind-merge": "latest",
-    "tw-animate-css": "latest"
+    "tw-animate-css": "latest",
+    "shared": "workspace:*"
   },
   "devDependencies": {
     "@react-router/dev": "^7",

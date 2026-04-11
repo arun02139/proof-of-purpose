@@ -13,10 +13,19 @@ importers:
       '@anthropic-ai/sdk':
         specifier: latest
         version: 0.88.0
+      shared:
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       tsx:
         specifier: latest
         version: 4.21.0
+      typescript:
+        specifier: latest
+        version: 6.0.2
+
+  packages/shared:
+    devDependencies:
       typescript:
         specifier: latest
         version: 6.0.2
@@ -53,6 +62,9 @@ importers:
       react-router:
         specifier: ^7
         version: 7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      shared:
+        specifier: workspace:*
+        version: link:../shared
       tailwind-merge:
         specifier: latest
         version: 3.5.0
