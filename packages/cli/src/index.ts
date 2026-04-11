@@ -40,7 +40,7 @@ interface RawConstitution {
   }[];
 }
 
-function loadConstitution(filePath: string): Constitution {
+export function loadConstitution(filePath: string): Constitution {
   const raw = yaml.load(readFileSync(filePath, "utf-8")) as RawConstitution;
   return {
     provider: raw.provider,
@@ -88,7 +88,7 @@ function fakeSig(): string {
 // 4. Deterministic pass/fail via string matching
 // ---------------------------------------------------------------------------
 
-function judge(response: string, expected: "Yes" | "No"): boolean {
+export function judge(response: string, expected: "Yes" | "No"): boolean {
   const firstWord = response.trim().split(/[\s,.:;!]+/)[0].toLowerCase();
   return firstWord === expected.toLowerCase();
 }
@@ -97,7 +97,7 @@ function judge(response: string, expected: "Yes" | "No"): boolean {
 // 5. Build eval bundle with SHA-256 hash
 // ---------------------------------------------------------------------------
 
-function buildBundle(
+export function buildBundle(
   constitution: Constitution,
   results: EvalResult[],
 ): EvalBundle {
@@ -229,7 +229,15 @@ async function main() {
   return bundlePath;
 }
 
-main().catch((err) => {
-  console.error("Fatal:", err);
-  process.exit(1);
-});
+// Only run when executed directly (not when imported by tests)
+const isDirectRun =
+  process.argv[1] &&
+  (process.argv[1].endsWith("index.ts") ||
+    process.argv[1].endsWith("index.js"));
+
+if (isDirectRun) {
+  main().catch((err) => {
+    console.error("Fatal:", err);
+    process.exit(1);
+  });
+}

@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter web dev",
+    "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck"
   },
   "pnpm": {
