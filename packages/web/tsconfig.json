@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "rootDirs": [".", "./.react-router/types"],
+    "paths": {
+      "~/*": ["./app/*"]
+    }
+  },
+  "include": [
+    "app",
+    "react-router.config.ts",
+    "vite.config.ts",
+    ".react-router/types/**/*"
+  ]
+}

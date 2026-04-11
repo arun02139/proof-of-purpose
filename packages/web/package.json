@@ -1,0 +1,35 @@
+{
+  "name": "web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "typecheck": "react-router typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1",
+    "@react-router/node": "^7",
+    "@react-router/serve": "^7",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "isbot": "^5",
+    "lucide-react": "latest",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-router": "^7",
+    "tailwind-merge": "latest",
+    "tw-animate-css": "latest"
+  },
+  "devDependencies": {
+    "@react-router/dev": "^7",
+    "@tailwindcss/vite": "^4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "latest",
+    "vite": "^6",
+    "vite-tsconfig-paths": "^4"
+  }
+}

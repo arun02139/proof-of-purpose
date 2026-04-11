@@ -4,5 +4,10 @@
   "scripts": {
     "dev": "pnpm --filter web dev",
     "typecheck": "pnpm -r run typecheck"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
