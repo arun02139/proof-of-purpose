@@ -1,10 +1,16 @@
-import { readFileSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  mkdirSync,
+  existsSync,
+} from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import yaml from "js-yaml";
-import type { Constitution, Category } from "shared";
+import type { Constitution, Category, Submission } from "shared";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -44,23 +50,106 @@ function loadConstitution(filePath: string): Constitution {
   };
 }
 
-export function createApp(): express.Express {
+export function createApp(dataDir?: string): express.Express {
   const app = express();
+  const submissionsDir = resolve(
+    dataDir ?? process.env.DATA_DIR ?? resolve(REPO_ROOT, "data"),
+    "submissions",
+  );
 
   app.use(cors({ origin: true }));
   app.use(express.json());
 
+  // Load constitution once for prompt lookups
+  const constitutionPath = resolve(
+    CONSTITUTIONS_DIR,
+    "anthropic-claude.yaml",
+  );
+
   app.get("/api/constitution", (_req, res) => {
     try {
-      const constitutionPath = resolve(
-        CONSTITUTIONS_DIR,
-        "anthropic-claude.yaml",
-      );
       const constitution = loadConstitution(constitutionPath);
       res.json(constitution);
     } catch (err) {
       console.error("Failed to load constitution:", err);
       res.status(500).json({ error: "Failed to load constitution" });
+    }
+  });
+
+  app.get("/api/submissions", (_req, res) => {
+    try {
+      if (!existsSync(submissionsDir)) {
+        res.json([]);
+        return;
+      }
+      const files = readdirSync(submissionsDir).filter((f) =>
+        f.endsWith(".json"),
+      );
+      const submissions: Submission[] = files.map((f) =>
+        JSON.parse(readFileSync(resolve(submissionsDir, f), "utf-8")),
+      );
+      res.json(submissions);
+    } catch (err) {
+      console.error("Failed to read submissions:", err);
+      res.status(500).json({ error: "Failed to read submissions" });
+    }
+  });
+
+  app.post("/api/submissions", (req, res) => {
+    try {
+      const { question_id, answer, hash } = req.body;
+
+      // Validate required fields
+      if (!question_id || !answer || !hash) {
+        res.status(400).json({
+          error: "Missing required fields: question_id, answer, hash",
+        });
+        return;
+      }
+
+      // Look up the prompt to compute verdict
+      const constitution = loadConstitution(constitutionPath);
+      let expectedAnswer: string | null = null;
+      for (const rule of constitution.rules) {
+        for (const prompt of rule.prompts) {
+          if (prompt.question_id === question_id) {
+            expectedAnswer = prompt.expected_answer;
+          }
+        }
+      }
+
+      if (expectedAnswer === null) {
+        res.status(400).json({ error: `Invalid question_id: ${question_id}` });
+        return;
+      }
+
+      // Compute verdict: case-insensitive first-word match
+      const firstWord = answer.trim().split(/\s/)[0].replace(/[.,!?]/g, "");
+      const verdict: "pass" | "fail" =
+        firstWord.toLowerCase() === expectedAnswer.toLowerCase()
+          ? "pass"
+          : "fail";
+
+      const submission: Submission = {
+        question_id,
+        answer,
+        hash,
+        verdict,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Write to disk
+      mkdirSync(submissionsDir, { recursive: true });
+      const filename = `${question_id}-${Date.now()}.json`;
+      writeFileSync(
+        resolve(submissionsDir, filename),
+        JSON.stringify(submission, null, 2),
+      );
+
+      res.status(201).json(submission);
+    } catch (err) {
+      console.error("Failed to create submission:", err);
+      res.status(500).json({ error: "Failed to create submission" });
     }
   });
 

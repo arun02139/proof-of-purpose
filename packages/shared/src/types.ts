@@ -74,3 +74,15 @@ export interface AuditorSubmission {
   ots_proof_file: string;
   submitted_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Submission — recorded via the server API
+// ---------------------------------------------------------------------------
+
+export interface Submission {
+  question_id: string;
+  answer: string;
+  hash: string;
+  verdict: "pass" | "fail";
+  timestamp: string;
+}
