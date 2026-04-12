@@ -157,7 +157,7 @@ function PromptCard({ prompt, submission, isAuditor, onSubmit }: PromptCardProps
             <span>
               Expected: <strong>{prompt.expected_answer}</strong>
             </span>
-            <span>
+            <span className="inline-flex items-center gap-1">
               Verdict:{" "}
               <strong
                 className={
@@ -166,6 +166,17 @@ function PromptCard({ prompt, submission, isAuditor, onSubmit }: PromptCardProps
               >
                 {effectiveSubmission.verdict}
               </strong>
+              {effectiveSubmission.anchor?.status === "anchored" && effectiveSubmission.anchor.block_height && (
+                <a
+                  href={`https://mempool.space/block/${effectiveSubmission.anchor.block_height}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                  title={`View on mempool.space (block ${effectiveSubmission.anchor.block_height})`}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
             </span>
           </div>
           <p className="text-xs text-muted-foreground font-mono">

@@ -134,8 +134,19 @@ function PromptRow({ prompt, submission, onSubmit }: PromptRowProps) {
               Expected: <strong>{prompt.expected_answer}</strong>
             </span>
             {submission && (
-              <span>
+              <span className="inline-flex items-center gap-1">
                 Verdict: <strong className={passed ? "text-emerald-600" : "text-red-600"}>{submission.verdict}</strong>
+                {submission.anchor?.status === "anchored" && submission.anchor.block_height && (
+                  <a
+                    href={`https://mempool.space/block/${submission.anchor.block_height}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                    title={`View on mempool.space (block ${submission.anchor.block_height})`}
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
               </span>
             )}
           </div>
