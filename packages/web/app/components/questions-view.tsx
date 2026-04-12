@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Category, ConstitutionRule, Prompt, Submission } from "shared";
 import { Shield, Eye, Scale, Lightbulb, CheckCircle2, XCircle, Circle, Anchor, Clock, ExternalLink, Copy, Check } from "lucide-react";
 import { Button } from "~/components/ui/button";
@@ -216,9 +216,23 @@ function PromptCard({ prompt, submission, isAuditor, onSubmit }: PromptCardProps
   );
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export function QuestionsView({ category, rules, submissions, isAuditor = false, onSubmit }: QuestionsViewProps) {
   const meta = CATEGORY_META[category];
   const Icon = meta.icon;
+
+  const shuffledRules = useMemo(
+    () => shuffle(rules).map((rule) => ({ ...rule, prompts: shuffle(rule.prompts) })),
+    [category],
+  );
 
   return (
     <div>
@@ -234,7 +248,7 @@ export function QuestionsView({ category, rules, submissions, isAuditor = false,
 
       {/* Rules and prompts */}
       <div className="space-y-6">
-        {rules.map((rule) => (
+        {shuffledRules.map((rule) => (
           <div key={rule.id} className="space-y-3">
             <div>
               <p className="text-xs font-mono text-muted-foreground">{rule.id}</p>
