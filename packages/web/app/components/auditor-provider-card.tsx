@@ -141,7 +141,7 @@ function PromptRow({ prompt, submission, onSubmit }: PromptRowProps) {
                     href={
                       submission.anchor.status === "anchored" && submission.anchor.block_height
                         ? `https://mempool.space/block/${submission.anchor.block_height}`
-                        : `https://mempool.space`
+                        : `https://mempool.space/blocks`
                     }
                     target="_blank"
                     rel="noopener noreferrer"
@@ -149,7 +149,7 @@ function PromptRow({ prompt, submission, onSubmit }: PromptRowProps) {
                     title={
                       submission.anchor.status === "anchored" && submission.anchor.block_height
                         ? `View on mempool.space (block ${submission.anchor.block_height})`
-                        : "Pending — view mempool.space"
+                        : "Pending — awaiting Bitcoin confirmation. View recent blocks on mempool.space."
                     }
                   >
                     <ExternalLink className="h-3 w-3" />
