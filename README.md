@@ -165,6 +165,16 @@ proof-of-purpose/
 │   └── submissions/            # Per-question dashboard submissions + .ots proofs (runtime)
 ├── prd/                        # bootstrap.md, pop-v1.md, prototype.md
 ├── prompts/                    # Scratch prompt drafts
+├── ralph/                      # Autonomous agent loop scripts
+│   ├── afk.sh                  # Long-running "away-from-keyboard" driver
+│   ├── once.sh                 # Single-iteration driver
+│   └── prompt.md               # Prompt fed to the loop
+├── .claude/                    # Claude Code project config
+│   ├── settings.local.json
+│   └── skills/                 # Project-scoped skills
+│       ├── prd-to-issues/SKILL.md
+│       ├── write-a-prd/SKILL.md
+│       └── write-a-skill/SKILL.md
 ├── PoP.md                      # Full protocol vision (beyond hackathon scope)
 ├── DEMO.md                     # Step-by-step demo script
 ├── CLAUDE.md                   # Project-level Claude Code instructions
