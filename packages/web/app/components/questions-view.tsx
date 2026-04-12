@@ -166,13 +166,21 @@ function PromptCard({ prompt, submission, isAuditor, onSubmit }: PromptCardProps
               >
                 {effectiveSubmission.verdict}
               </strong>
-              {effectiveSubmission.anchor?.status === "anchored" && effectiveSubmission.anchor.block_height && (
+              {effectiveSubmission.anchor && (
                 <a
-                  href={`https://mempool.space/block/${effectiveSubmission.anchor.block_height}`}
+                  href={
+                    effectiveSubmission.anchor.status === "anchored" && effectiveSubmission.anchor.block_height
+                      ? `https://mempool.space/block/${effectiveSubmission.anchor.block_height}`
+                      : `https://mempool.space`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center text-muted-foreground hover:text-foreground"
-                  title={`View on mempool.space (block ${effectiveSubmission.anchor.block_height})`}
+                  title={
+                    effectiveSubmission.anchor.status === "anchored" && effectiveSubmission.anchor.block_height
+                      ? `View on mempool.space (block ${effectiveSubmission.anchor.block_height})`
+                      : "Pending — view mempool.space"
+                  }
                 >
                   <ExternalLink className="h-3 w-3" />
                 </a>
