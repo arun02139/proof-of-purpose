@@ -101,8 +101,8 @@ function Dashboard() {
           </p>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             <div className="flex gap-3">
-              <button type="button" onClick={handleShieldClick} className="mt-0.5 shrink-0" title="Reset submission data">
-                <Shield className="h-5 w-5 text-primary hover:text-primary/70 transition-colors cursor-pointer" />
+              <button type="button" onClick={handleShieldClick} className="mt-0.5 shrink-0 leading-none p-0" title="Reset submission data">
+                <Shield className="h-5 w-5 text-primary hover:text-primary/70 transition-colors cursor-pointer block" />
               </button>
               <div>
                 <p className="font-semibold">Test</p>
