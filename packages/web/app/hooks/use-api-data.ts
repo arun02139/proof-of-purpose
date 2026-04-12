@@ -19,6 +19,8 @@ interface ApiData {
     answer: string,
     hash: string,
   ) => Promise<Submission>;
+  clearSubmissions: () => void;
+  resetSubmissions: () => Promise<void>;
 }
 
 /**
@@ -147,6 +149,15 @@ export function useApiData(): ApiData {
     [],
   );
 
+  const clearSubmissions = useCallback(() => {
+    setSubmissions([]);
+  }, []);
+
+  const resetSubmissions = useCallback(async () => {
+    await fetch("/api/submissions", { method: "DELETE" });
+    setSubmissions([]);
+  }, []);
+
   const providers = useMemo(() => {
     const list: ProviderDisplay[] = [];
     if (constitution) {
@@ -162,5 +173,7 @@ export function useApiData(): ApiData {
     loading,
     error,
     submitAnswer,
+    clearSubmissions,
+    resetSubmissions,
   };
 }

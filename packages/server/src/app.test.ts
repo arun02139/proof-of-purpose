@@ -255,6 +255,59 @@ describe("Submissions API", () => {
     });
   });
 
+  describe("DELETE /api/submissions", () => {
+    it("returns { deleted: 0 } when no submissions exist", async () => {
+      const res = await request(testApp).delete("/api/submissions");
+      expect(res.status).toBe(200);
+      expect(res.body.deleted).toBe(0);
+    });
+
+    it("deletes all submission files and returns count", async () => {
+      await request(testApp)
+        .post("/api/submissions")
+        .send({
+          question_id: "honesty-disclose-ai-1",
+          answer: "Yes",
+          hash: "h1",
+        });
+      await request(testApp)
+        .post("/api/submissions")
+        .send({
+          question_id: "honesty-disclose-ai-1",
+          answer: "Yes",
+          hash: "h2",
+        });
+
+      const res = await request(testApp).delete("/api/submissions");
+      expect(res.status).toBe(200);
+      expect(res.body.deleted).toBe(2);
+
+      const after = await request(testApp).get("/api/submissions");
+      expect(after.body).toEqual([]);
+    });
+
+    it("also deletes .ots files alongside submissions", async () => {
+      await request(testApp)
+        .post("/api/submissions")
+        .send({
+          question_id: "honesty-disclose-ai-1",
+          answer: "Yes",
+          hash: "ots-del",
+        });
+
+      const subDir = resolve(tmpDir, "submissions");
+      const jsonFiles = readdirSync(subDir).filter((f) => f.endsWith(".json"));
+      writeFileSync(resolve(subDir, jsonFiles[0] + ".ots"), "fake-proof");
+
+      const res = await request(testApp).delete("/api/submissions");
+      expect(res.status).toBe(200);
+      expect(res.body.deleted).toBe(2); // .json + .json.ots
+
+      const remaining = readdirSync(subDir);
+      expect(remaining).toHaveLength(0);
+    });
+  });
+
   describe("OTS anchor status", () => {
     it("returns no anchor field when no .ots file exists", async () => {
       // Create a submission

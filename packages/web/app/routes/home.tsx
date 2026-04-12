@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import type { Category, ConstitutionRule, Submission } from "shared";
 import { useApiData } from "~/hooks/use-api-data";
 import { ProviderCard } from "~/components/provider-card";
@@ -27,9 +27,40 @@ type ViewState =
   | { view: "questions"; category: Category };
 
 function Dashboard() {
-  const { providers, submissions, loading, error, submitAnswer } = useApiData();
-  const { isAuditor, toggleLogin } = useAuth();
+  const { providers, submissions, loading, error, submitAnswer, clearSubmissions, resetSubmissions } = useApiData();
+  const { isAuditor, toggleLogin, logout } = useAuth();
   const [viewState, setViewState] = useState<ViewState>("dashboard");
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress = useRef(false);
+
+  const handlePointerDown = useCallback(() => {
+    didLongPress.current = false;
+    longPressTimer.current = setTimeout(() => {
+      didLongPress.current = true;
+      resetSubmissions();
+      logout();
+      setViewState("dashboard");
+    }, 2000);
+  }, [resetSubmissions, logout]);
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (didLongPress.current) return;
+    if (isAuditor) {
+      clearSubmissions();
+      logout();
+      setViewState("dashboard");
+    } else {
+      toggleLogin();
+    }
+  }, [isAuditor, clearSubmissions, logout, toggleLogin]);
 
   // Find the real (Anthropic) provider for the overlay
   const realProvider = providers.find((p) => p.isReal);
@@ -55,7 +86,14 @@ function Dashboard() {
             <img src="/logo.png" alt="Proof-of-Purpose logo" className="h-7 w-7 shrink-0" />
             <h1 className="text-xl font-bold tracking-tight">Proof-of-Purpose</h1>
           </div>
-          <Button variant="outline" size="sm" onClick={toggleLogin}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClick}
+            onPointerDown={isAuditor ? handlePointerDown : undefined}
+            onPointerUp={isAuditor ? handlePointerUp : undefined}
+            onPointerLeave={isAuditor ? handlePointerUp : undefined}
+          >
             {isAuditor ? (
               <>
                 <LogOut className="h-4 w-4 mr-1" />

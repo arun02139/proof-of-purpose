@@ -4,6 +4,7 @@ import {
   readdirSync,
   mkdirSync,
   existsSync,
+  rmSync,
 } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -155,6 +156,25 @@ export function createApp(dataDir?: string): express.Express {
     } catch (err) {
       console.error("Failed to read submissions:", err);
       res.status(500).json({ error: "Failed to read submissions" });
+    }
+  });
+
+  app.delete("/api/submissions", (_req, res) => {
+    try {
+      if (!existsSync(submissionsDir)) {
+        res.json({ deleted: 0 });
+        return;
+      }
+      const files = readdirSync(submissionsDir).filter(
+        (f) => f.endsWith(".json") || f.endsWith(".json.ots"),
+      );
+      for (const f of files) {
+        rmSync(resolve(submissionsDir, f));
+      }
+      res.json({ deleted: files.length });
+    } catch (err) {
+      console.error("Failed to delete submissions:", err);
+      res.status(500).json({ error: "Failed to delete submissions" });
     }
   });
 
