@@ -12,7 +12,7 @@ import { Shield, Link, Bitcoin, Award, LogIn, LogOut, Loader2 } from "lucide-rea
 
 export function meta() {
   return [
-    { title: "Proof of Purpose — AI Accountability Dashboard" },
+    { title: "Proof-of-Purpose — AI Accountability Dashboard" },
     {
       name: "description",
       content:
@@ -51,7 +51,24 @@ function Dashboard() {
       {/* Header */}
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <h1 className="text-xl font-bold tracking-tight">Proof of Purpose</h1>
+          <div className="flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 32 32"
+              className="h-7 w-7 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {/* Shield outline */}
+              <path d="M16 2 L4 8 L4 16 C4 23 9 28 16 30 C23 28 28 23 28 16 L28 8 Z" />
+              {/* Checkmark */}
+              <path d="M10 16 L14 20 L22 12" />
+            </svg>
+            <h1 className="text-xl font-bold tracking-tight">Proof-of-Purpose</h1>
+          </div>
           <Button variant="outline" size="sm" onClick={toggleLogin}>
             {isAuditor ? (
               <>
