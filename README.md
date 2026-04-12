@@ -19,6 +19,18 @@ Proof-of-Purpose is a system that:
 
 The core claim: *"Here is an adversarial answer from the model, and here is cryptographic proof — timestamped on Bitcoin — that this answer existed at this moment and has not been altered since."*
 
+## Built This Weekend
+
+Every artifact below was designed, written, and deployed during the MIT Bitcoin Hackathon (April 12–13, 2026):
+
+- **Constitution schema + seed data** — YAML format with 5 rules × 4 adversarial prompts, derived from Claude's published constitution.
+- **CLI eval pipeline** (`packages/cli`) — loads YAML → calls the Claude API → deterministic first-word judging → bundles results → shells out to `ots stamp` for Bitcoin anchoring.
+- **Express API** (`packages/server`) — `/api/constitution`, `/api/submissions` (GET/POST/DELETE), per-submission OTS stamping, and a lazy upgrade pass that promotes pending proofs to a real Bitcoin block height on the next read.
+- **React Router dashboard** (`packages/web`) — visitor view with provider cards + per-category trust bars; auditor view with model → category → question drill-down, submission form, and live Bitcoin anchor status.
+- **Live deployment** — Railway build pipeline, server also serves the built web bundle.
+- **Test suites** — Vitest unit tests for the eval engine and supertest API tests on the server; React Testing Library coverage on the overlay navigation flow.
+- **Proof of concept on mainnet** — `eval-bundle-example.json` anchored on real Bitcoin via OpenTimestamps, verifiable by anyone with `ots verify`.
+
 ## Architecture
 
 Two halves decoupled by an HTTP API:
