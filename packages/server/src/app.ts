@@ -74,9 +74,21 @@ function stampFile(filePath: string): void {
   });
 }
 
+const UPGRADE_MIN_AGE_MS = 3 * 60 * 60 * 1000;
+
+function parseAnchorFromInfo(info: string): Submission["anchor"] | null {
+  if (!info.includes("BitcoinBlockHeaderAttestation")) return null;
+  const match = info.match(/block height (\d+)/i);
+  return {
+    status: "anchored",
+    block_height: match ? parseInt(match[1], 10) : undefined,
+  };
+}
+
 /**
  * Check anchor status for a submission JSON file.
  * Returns anchor info if a .ots proof file exists, undefined otherwise.
+ * Attempts `ots upgrade` on pending proofs older than 3 hours.
  */
 function getAnchorStatus(
   jsonPath: string,
@@ -84,20 +96,32 @@ function getAnchorStatus(
   const otsPath = jsonPath + ".ots";
   if (!existsSync(otsPath)) return undefined;
 
-  // .ots file exists — at minimum it's pending
-  // Try to detect if it's been upgraded (anchored on Bitcoin)
   try {
-    const info = execFileSync("ots", ["info", otsPath], {
+    let info = execFileSync("ots", ["info", otsPath], {
       encoding: "utf-8",
       timeout: 5000,
     });
-    if (info.includes("BitcoinBlockHeaderAttestation")) {
-      // Extract block height from output like "Bitcoin block height 123456"
-      const match = info.match(/block height (\d+)/i);
-      return {
-        status: "anchored",
-        block_height: match ? parseInt(match[1], 10) : undefined,
-      };
+
+    let anchored = parseAnchorFromInfo(info);
+    if (anchored) return anchored;
+
+    // Still pending — attempt upgrade if submission is old enough
+    const submission: Submission = JSON.parse(
+      readFileSync(jsonPath, "utf-8"),
+    );
+    const age = Date.now() - new Date(submission.timestamp).getTime();
+    if (age >= UPGRADE_MIN_AGE_MS) {
+      try {
+        execFileSync("ots", ["upgrade", otsPath], { timeout: 15000 });
+        info = execFileSync("ots", ["info", otsPath], {
+          encoding: "utf-8",
+          timeout: 5000,
+        });
+        anchored = parseAnchorFromInfo(info);
+        if (anchored) return anchored;
+      } catch {
+        // upgrade failed or timed out — stay pending
+      }
     }
   } catch {
     // ots binary not available or timed out — just report pending

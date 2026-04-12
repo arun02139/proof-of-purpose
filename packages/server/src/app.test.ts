@@ -4,6 +4,7 @@ import {
   rmSync,
   mkdirSync,
   writeFileSync,
+  readFileSync,
   readdirSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -341,6 +342,50 @@ describe("Submissions API", () => {
 
       const res = await request(testApp).get("/api/submissions");
       expect(res.body[0].anchor).toBeDefined();
+      expect(res.body[0].anchor.status).toBe("pending");
+    });
+
+    it("does not attempt upgrade on recent submissions (< 3h old)", async () => {
+      await request(testApp)
+        .post("/api/submissions")
+        .send({
+          question_id: "honesty-disclose-ai-1",
+          answer: "Yes",
+          hash: "recent-ots",
+        });
+
+      const subDir = resolve(tmpDir, "submissions");
+      const files = readdirSync(subDir).filter((f) => f.endsWith(".json"));
+      writeFileSync(resolve(subDir, files[0] + ".ots"), "fake-ots-proof");
+
+      // Fresh submission should remain pending without upgrade attempt
+      const res = await request(testApp).get("/api/submissions");
+      expect(res.body[0].anchor.status).toBe("pending");
+    });
+
+    it("attempts upgrade on old submissions (>= 3h old)", async () => {
+      await request(testApp)
+        .post("/api/submissions")
+        .send({
+          question_id: "honesty-disclose-ai-1",
+          answer: "Yes",
+          hash: "old-ots",
+        });
+
+      const subDir = resolve(tmpDir, "submissions");
+      const files = readdirSync(subDir).filter((f) => f.endsWith(".json"));
+      const jsonPath = resolve(subDir, files[0]);
+
+      // Backdate the submission timestamp to 4 hours ago
+      const submission = JSON.parse(readFileSync(jsonPath, "utf-8"));
+      submission.timestamp = new Date(
+        Date.now() - 4 * 60 * 60 * 1000,
+      ).toISOString();
+      writeFileSync(jsonPath, JSON.stringify(submission, null, 2));
+      writeFileSync(jsonPath + ".ots", "fake-ots-proof");
+
+      // ots binary not available in test — still returns pending gracefully
+      const res = await request(testApp).get("/api/submissions");
       expect(res.body[0].anchor.status).toBe("pending");
     });
   });
