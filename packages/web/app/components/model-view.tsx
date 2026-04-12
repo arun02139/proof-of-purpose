@@ -46,33 +46,33 @@ export function ModelView({
         <ExternalLink className="h-3 w-3" />
       </a>
 
-      {/* Tree — zigzag layout */}
-      <div className="mt-8 w-full max-w-md">
-        <svg viewBox="0 0 400 480" className="w-full" aria-hidden="true">
+      {/* Tree — zigzag layout with angled branches */}
+      <div className="mt-8 w-full max-w-sm">
+        <svg viewBox="0 0 400 300" className="w-full" aria-hidden="true">
           {/* Vertical trunk */}
           <line
             x1="200"
-            y1="0"
+            y1="40"
             x2="200"
-            y2="480"
+            y2="280"
             stroke="currentColor"
             strokeWidth="2"
             className="text-border"
           />
 
-          {/* Horizontal branches to each node */}
+          {/* Angled branches — each angles upward from trunk to node */}
           {[
-            { x: 120, y: 80 },   /* Safety — left */
-            { x: 280, y: 170 },  /* Honesty — right */
-            { x: 120, y: 280 },  /* Bias — left */
-            { x: 280, y: 370 },  /* Transparency — right */
-          ].map(({ x, y }, i) => (
+            { tx: 200, ty: 80, nx: 80, ny: 30 },    /* Safety — up-left */
+            { tx: 200, ty: 140, nx: 320, ny: 90 },   /* Honesty — up-right */
+            { tx: 200, ty: 200, nx: 80, ny: 150 },   /* Bias — up-left */
+            { tx: 200, ty: 260, nx: 320, ny: 210 },  /* Transparency — up-right */
+          ].map(({ tx, ty, nx, ny }, i) => (
             <line
               key={i}
-              x1="200"
-              y1={y}
-              x2={x}
-              y2={y}
+              x1={tx}
+              y1={ty}
+              x2={nx}
+              y2={ny}
               stroke="currentColor"
               strokeWidth="2"
               className="text-border"
@@ -81,16 +81,16 @@ export function ModelView({
         </svg>
 
         {/* Category nodes positioned over the SVG */}
-        <div className="relative -mt-[100%] pointer-events-none" style={{ aspectRatio: "400/480" }}>
+        <div className="relative -mt-[100%] pointer-events-none" style={{ aspectRatio: "400/300" }}>
           <div className="pointer-events-auto w-full h-full relative">
             {categories.map(({ category, label, color, icon: Icon, side }, i) => {
               const yPositions = [
-                "16.7%",  /* 80/480 */
-                "35.4%",  /* 170/480 */
-                "58.3%",  /* 280/480 */
-                "77.1%",  /* 370/480 */
+                "10%",    /* 30/300 */
+                "30%",    /* 90/300 */
+                "50%",    /* 150/300 */
+                "70%",    /* 210/300 */
               ];
-              const xPos = side === "left" ? "30%" : "70%";
+              const xPos = side === "left" ? "20%" : "80%";
               return (
                 <button
                   key={category}
