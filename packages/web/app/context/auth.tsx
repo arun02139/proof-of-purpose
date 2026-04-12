@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 interface AuthState {
   isAuditor: boolean;
@@ -14,14 +14,11 @@ const AuthContext = createContext<AuthState>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuditor, setIsAuditor] = useState(false);
+  const toggleLogin = useCallback(() => setIsAuditor((v) => !v), []);
+  const logout = useCallback(() => setIsAuditor(false), []);
+  const value = useMemo(() => ({ isAuditor, toggleLogin, logout }), [isAuditor, toggleLogin, logout]);
   return (
-    <AuthContext.Provider
-      value={{
-        isAuditor,
-        toggleLogin: () => setIsAuditor((v) => !v),
-        logout: () => setIsAuditor(false),
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -31,11 +31,15 @@ function Dashboard() {
   const { isAuditor, toggleLogin, logout } = useAuth();
   const [viewState, setViewState] = useState<ViewState>("dashboard");
 
-  const handleShieldClick = useCallback(() => {
-    resetSubmissions();
+  const handleShieldClick = useCallback(async () => {
     if (isAuditor) {
       logout();
       setViewState("dashboard");
+    }
+    try {
+      await resetSubmissions();
+    } catch {
+      // Server may be unreachable; local state is already cleared by logout
     }
   }, [isAuditor, resetSubmissions, logout]);
 
@@ -97,7 +101,7 @@ function Dashboard() {
           </p>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             <div className="flex gap-3">
-              <button onClick={handleShieldClick} className="mt-0.5 shrink-0" title="Reset submission data">
+              <button type="button" onClick={handleShieldClick} className="mt-0.5 shrink-0" title="Reset submission data">
                 <Shield className="h-5 w-5 text-primary hover:text-primary/70 transition-colors cursor-pointer" />
               </button>
               <div>
