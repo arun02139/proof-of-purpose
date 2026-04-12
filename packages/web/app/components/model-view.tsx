@@ -47,25 +47,29 @@ export function ModelView({
       </a>
 
       {/* Tree — zigzag layout with angled branches */}
-      <div className="mt-8 w-full max-w-sm">
-        <svg viewBox="0 0 400 300" className="w-full" aria-hidden="true">
+      <div className="mt-6 w-full max-w-md relative" style={{ height: "380px" }}>
+        <svg
+          viewBox="0 0 400 380"
+          className="absolute inset-0 w-full h-full"
+          aria-hidden="true"
+        >
           {/* Vertical trunk */}
           <line
             x1="200"
-            y1="40"
+            y1="20"
             x2="200"
-            y2="280"
+            y2="360"
             stroke="currentColor"
             strokeWidth="2"
             className="text-border"
           />
 
-          {/* Angled branches — each angles upward from trunk to node */}
+          {/* Angled branches — each angles upward from trunk to leaf node */}
           {[
-            { tx: 200, ty: 80, nx: 80, ny: 30 },    /* Safety — up-left */
-            { tx: 200, ty: 140, nx: 320, ny: 90 },   /* Honesty — up-right */
-            { tx: 200, ty: 200, nx: 80, ny: 150 },   /* Bias — up-left */
-            { tx: 200, ty: 260, nx: 320, ny: 210 },  /* Transparency — up-right */
+            { tx: 200, ty: 80, nx: 80, ny: 45 },
+            { tx: 200, ty: 160, nx: 320, ny: 125 },
+            { tx: 200, ty: 240, nx: 80, ny: 205 },
+            { tx: 200, ty: 320, nx: 320, ny: 285 },
           ].map(({ tx, ty, nx, ny }, i) => (
             <line
               key={i}
@@ -80,35 +84,29 @@ export function ModelView({
           ))}
         </svg>
 
-        {/* Category nodes positioned over the SVG */}
-        <div className="relative -mt-[100%] pointer-events-none" style={{ aspectRatio: "400/300" }}>
-          <div className="pointer-events-auto w-full h-full relative">
-            {categories.map(({ category, label, color, icon: Icon, side }, i) => {
-              const yPositions = [
-                "10%",    /* 30/300 */
-                "30%",    /* 90/300 */
-                "50%",    /* 150/300 */
-                "70%",    /* 210/300 */
-              ];
-              const xPos = side === "left" ? "20%" : "80%";
-              return (
-                <button
-                  key={category}
-                  onClick={() => onCategoryClick(category)}
-                  className="absolute flex flex-col items-center gap-1.5 -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
-                  style={{ left: xPos, top: yPositions[i] }}
-                >
-                  <div
-                    className={`${color} flex h-16 w-16 items-center justify-center rounded-full transition-transform group-hover:scale-110`}
-                  >
-                    <Icon className="h-7 w-7 text-foreground/70" />
-                  </div>
-                  <span className="text-xs font-medium">{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Category nodes positioned as leaves at branch endpoints */}
+        {categories.map(({ category, label, color, icon: Icon, side }, i) => {
+          const topPercents = ["11.8%", "32.9%", "53.9%", "75%"];
+          const leftPercent = side === "left" ? "20%" : "80%";
+          return (
+            <button
+              key={category}
+              onClick={() => onCategoryClick(category)}
+              className="absolute flex flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-10"
+              style={{
+                left: leftPercent,
+                top: topPercents[i],
+              }}
+            >
+              <div
+                className={`${color} flex h-14 w-14 items-center justify-center rounded-full transition-transform group-hover:scale-110`}
+              >
+                <Icon className="h-6 w-6 text-foreground/70" />
+              </div>
+              <span className="text-xs font-medium">{label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
