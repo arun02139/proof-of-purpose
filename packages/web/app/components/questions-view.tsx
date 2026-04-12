@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import type { Category, ConstitutionRule, Prompt, Submission } from "shared";
-import { Shield, Eye, Scale, Lightbulb, CheckCircle2, XCircle, Circle, Anchor, Clock, ExternalLink, Copy, Check } from "lucide-react";
+import { Shield, Eye, Scale, Lightbulb, CheckCircle2, XCircle, Anchor, Clock, ExternalLink, Copy, Check } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 const CATEGORY_META: Record<
@@ -64,14 +64,12 @@ function PromptCard({ prompt, submission, isAuditor, onSubmit }: PromptCardProps
     <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
       {/* Prompt text with copy button */}
       <div className="flex items-start gap-2">
-        {hasSubmission ? (
+        {hasSubmission && (
           passed ? (
             <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-500" />
           ) : (
             <XCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-500" />
           )
-        ) : (
-          <Circle className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
         )}
         <p className="text-sm flex-1">{prompt.text}</p>
         {isAuditor && (
