@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { Category, ConstitutionRule, Submission } from "shared";
 import { useApiData } from "~/hooks/use-api-data";
 import { ProviderCard } from "~/components/provider-card";
@@ -27,40 +27,17 @@ type ViewState =
   | { view: "questions"; category: Category };
 
 function Dashboard() {
-  const { providers, submissions, loading, error, submitAnswer, clearSubmissions, resetSubmissions } = useApiData();
+  const { providers, submissions, loading, error, submitAnswer, resetSubmissions } = useApiData();
   const { isAuditor, toggleLogin, logout } = useAuth();
   const [viewState, setViewState] = useState<ViewState>("dashboard");
 
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const didLongPress = useRef(false);
-
-  const handlePointerDown = useCallback(() => {
-    didLongPress.current = false;
-    longPressTimer.current = setTimeout(() => {
-      didLongPress.current = true;
-      resetSubmissions();
-      logout();
-      setViewState("dashboard");
-    }, 2000);
-  }, [resetSubmissions, logout]);
-
-  const handlePointerUp = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }, []);
-
-  const handleClick = useCallback(() => {
-    if (didLongPress.current) return;
+  const handleShieldClick = useCallback(() => {
+    resetSubmissions();
     if (isAuditor) {
-      clearSubmissions();
       logout();
       setViewState("dashboard");
-    } else {
-      toggleLogin();
     }
-  }, [isAuditor, clearSubmissions, logout, toggleLogin]);
+  }, [isAuditor, resetSubmissions, logout]);
 
   // Find the real (Anthropic) provider for the overlay
   const realProvider = providers.find((p) => p.isReal);
@@ -89,10 +66,7 @@ function Dashboard() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleClick}
-            onPointerDown={isAuditor ? handlePointerDown : undefined}
-            onPointerUp={isAuditor ? handlePointerUp : undefined}
-            onPointerLeave={isAuditor ? handlePointerUp : undefined}
+            onClick={toggleLogin}
           >
             {isAuditor ? (
               <>
@@ -123,7 +97,9 @@ function Dashboard() {
           </p>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             <div className="flex gap-3">
-              <Shield className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <button onClick={handleShieldClick} className="mt-0.5 shrink-0" title="Reset submission data">
+                <Shield className="h-5 w-5 text-primary hover:text-primary/70 transition-colors cursor-pointer" />
+              </button>
               <div>
                 <p className="font-semibold">Test</p>
                 <p className="text-sm text-muted-foreground">
