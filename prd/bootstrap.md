@@ -62,11 +62,6 @@ proof-of-purpose/
 | AI SDK | @anthropic-ai/sdk | Latest stable (CLI package only) |
 | Web framework | React Router v7 + Vite | Latest stable |
 | UI | Tailwind CSS 4 + shadcn/ui | Tailwind v4, latest shadcn |
-| Tailwind Vite plugin | @tailwindcss/vite | Required for Tailwind v4 (replaces PostCSS) |
-| React Router Vite plugin | @react-router/dev | Required for React Router v7 + Vite integration |
-| Path resolution | vite-tsconfig-paths | Resolves tsconfig path aliases in Vite |
-| shadcn utilities | clsx, class-variance-authority, tailwind-merge, tw-animate-css | Required by shadcn/ui components |
-| Icons | lucide-react | Icon library used by shadcn/ui |
 | Deployment | Vercel (static) | Not configured in bootstrap — future |
 | Bitcoin | OpenTimestamps CLI | System dependency, not npm |
 
