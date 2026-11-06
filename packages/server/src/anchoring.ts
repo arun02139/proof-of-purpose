@@ -27,9 +27,23 @@ const UPGRADE_BATCH = 10;
 
 type Fetch = typeof fetch;
 
+/** Read the body, giving up (null) as soon as it passes the cap. */
 async function readCapped(res: Response): Promise<Uint8Array | null> {
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  return bytes.length <= MAX_CALENDAR_RESPONSE ? bytes : null;
+  if (!res.body) return new Uint8Array(0);
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > MAX_CALENDAR_RESPONSE) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  return concat(...chunks);
 }
 
 /**

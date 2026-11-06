@@ -66,7 +66,7 @@ The auditor then pastes the **Answer** into the answer field and the **Hash** in
 Monorepo with four packages:
 
 - `packages/shared` — TypeScript types (Constitution, Submission, etc.)
-- `packages/server` — Express API server (constitution, submissions, OTS anchoring)
+- `packages/server` – Cloudflare Worker API on Hono + D1 (constitution, submissions, OTS stamping, hourly cron upgrade)
 - `packages/web` — React Router dashboard (Vite + Tailwind)
 - `packages/cli` — CLI eval pipeline (local use, not part of deployed flow)
 

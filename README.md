@@ -64,7 +64,7 @@ Auditor opens question
   → POST /api/submissions
     → Server matches first word against expected Yes/No → verdict
     → Stores the submission JSON (exact bytes) in D1
-    → After responding, POSTs its SHA-256 to the OpenTimestamps calendars
+    → After responding, POSTs the JSON's SHA-256 (salted with a nonce) to the OpenTimestamps calendars
       and stores the resulting .ots proof
   → Dashboard refreshes, showing pass/fail and pending → anchored
 ```
