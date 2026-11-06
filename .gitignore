@@ -5,3 +5,5 @@ build/
 .env
 .env.local
 .react-router/
+.wrangler/
+playground/

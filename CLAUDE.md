@@ -55,7 +55,8 @@ The auditor then pastes the **Answer** into the answer field and the **Hash** in
 ## Development
 
 - **Install:** `pnpm install`
-- **Dev server:** `pnpm --filter server dev` (port 3001) + `pnpm --filter web dev` (port 5173, proxies /api to 3001)
+- **Dev server:** `pnpm --filter server dev` (Worker via `wrangler dev`, port 3001, local D1) + `pnpm --filter web dev` (port 5173, proxies /api to 3001)
+- **Deploy:** `pnpm --filter web build`, then from `packages/server` run `cf-wrangler d1 migrations apply pop-submissions --remote` and `cf-wrangler deploy` (Cloudflare Worker `proof-of-purpose`, D1 `pop-submissions`; live at https://proof-of-purpose.arun02139.workers.dev)
 - **Test:** `pnpm run test`
 - **Typecheck:** `pnpm run typecheck`
 - **Build:** `pnpm run build`
@@ -65,7 +66,7 @@ The auditor then pastes the **Answer** into the answer field and the **Hash** in
 Monorepo with four packages:
 
 - `packages/shared` — TypeScript types (Constitution, Submission, etc.)
-- `packages/server` — Express API server (constitution, submissions, OTS anchoring)
+- `packages/server` – Cloudflare Worker API on Hono + D1 (constitution, submissions, OTS stamping, hourly cron upgrade)
 - `packages/web` — React Router dashboard (Vite + Tailwind)
 - `packages/cli` — CLI eval pipeline (local use, not part of deployed flow)
 

@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "proof-of-purpose",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-30",
+  "workers_dev": true,
+  "assets": {
+    // Built by `pnpm --filter web build` (React Router, ssr: false).
+    "directory": "../web/build/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pop-submissions",
+      "database_id": "0146eee6-2700-4a6d-934e-e163ab452f32",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Upgrade pending OpenTimestamps proofs to Bitcoin block heights.
+  "triggers": { "crons": ["17 * * * *"] },
+  "rules": [{ "type": "Text", "globs": ["**/*.yaml"], "fallthrough": true }],
+  "observability": { "enabled": true }
+}

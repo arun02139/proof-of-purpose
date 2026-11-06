@@ -19,7 +19,7 @@ Proof-of-Purpose is a system that:
 
 The core claim: *"Here is an adversarial answer from the model, and here is cryptographic proof – timestamped on Bitcoin – that this answer existed at this moment and has not been altered since."*
 
-Live demo: [proof-of-purpose-production.up.railway.app](https://proof-of-purpose-production.up.railway.app)
+Live demo: [proof-of-purpose.arun02139.workers.dev](https://proof-of-purpose.arun02139.workers.dev)
 
 ## Built This Weekend
 
@@ -31,7 +31,13 @@ Every artifact below was designed, written, and deployed during the MIT Bitcoin 
 - **React Router dashboard** (`packages/web`) – visitor view with provider cards + per-category trust bars; auditor view with model → category → question drill-down, submission form, and live Bitcoin anchor status.
 - **Live deployment** – Railway build pipeline, server also serves the built web bundle.
 - **Test suites** – Vitest unit tests for the eval engine and supertest API tests on the server; React Testing Library coverage on the overlay navigation flow.
-- **Proof of concept on mainnet** – `eval-bundle-example.json` anchored on real Bitcoin via OpenTimestamps, verifiable by anyone with `ots verify`.
+- **Proof of concept on mainnet** – `eval-bundle-example.json` anchored on real Bitcoin via OpenTimestamps (Bitcoin blocks 944547–944652, mined 2026-04-11).
+
+### Since the hackathon
+
+- **Moved to Cloudflare (November 2026).** The Railway account was deleted, and with it the original demo. The server is now a Cloudflare Worker (Hono) with submissions in D1 and the dashboard served as static assets.
+- **Anchoring on the live site now actually runs.** The Railway build never installed the `ots` binary, so live submissions were never stamped, and they lived on an ephemeral disk. The Worker stamps over HTTP against the public OpenTimestamps calendars, and an hourly Cron Trigger upgrades pending proofs to Bitcoin block heights.
+- **`eval-bundle-example.json.ots` upgraded.** It was committed while still pending; it now carries the four Bitcoin attestations the calendars completed in April.
 
 ## Architecture
 
@@ -42,9 +48,9 @@ Auditor (browser)                       Public (browser)
 ─────────────────                       ────────────────
 Login → click question → submit         See provider trust bars
 answer + hash → dashboard POSTs         Drill into Anthropic / Claude
-to /api/submissions → server writes     to inspect every question,
-JSON to disk → fire-and-forget          its answer, verdict, and
-`ots stamp` anchors hash on Bitcoin     Bitcoin anchor status
+to /api/submissions → Worker stores     to inspect every question,
+JSON in D1 → stamps it on public        its answer, verdict, and
+OpenTimestamps calendars                Bitcoin anchor status
 ```
 
 A separate **CLI eval pipeline** can also run the full constitution end-to-end against the Claude API, producing a single bundled JSON + `.ots` proof. The CLI is for batch demonstrations; the dashboard is the primary per-question anchoring surface.
@@ -57,12 +63,15 @@ Auditor opens question
   → Pastes answer + computed SHA-256 back into the dashboard
   → POST /api/submissions
     → Server matches first word against expected Yes/No → verdict
-    → Writes submission JSON to data/submissions/
-    → Shells out to `ots stamp` on the JSON file
+    → Stores the submission JSON (exact bytes) in D1
+    → After responding, POSTs the JSON's SHA-256 (salted with a nonce) to the OpenTimestamps calendars
+      and stores the resulting .ots proof
   → Dashboard refreshes, showing pass/fail and pending → anchored
 ```
 
-Pending OTS proofs older than 3 hours are automatically upgraded by the server on the next read, so the displayed Bitcoin block height moves from "pending" to a real height without manual intervention.
+An hourly Cron Trigger asks each calendar for the completed path of proofs older than 3 hours and splices it in, so the displayed Bitcoin block height moves from "pending" to a real height without manual intervention.
+
+Each anchored submission links its verification pair, `/api/submissions/<id>.json` (the exact stamped bytes) and `/api/submissions/<id>.json.ots`. Download both and check them with `ots info <id>.json.ots`, `ots --no-bitcoin verify <id>.json.ots` (prints the block and merkle root to check against any explorer), or the web verifier at [opentimestamps.org](https://opentimestamps.org). A plain `ots verify` needs a local Bitcoin node.
 
 ### Eval Flow (CLI)
 
@@ -81,7 +90,7 @@ Uses [OpenTimestamps](https://opentimestamps.org/) – no wallet code, no testne
 
 ```bash
 ots stamp file.json   # anchor hash on Bitcoin
-ots verify file.json  # anyone verifies later
+ots verify file.json  # anyone verifies later (needs a Bitcoin node; or --no-bitcoin)
 ```
 
 If a single byte of the JSON changes, verification fails.
@@ -114,9 +123,9 @@ Single-page React Router app with two states toggled by the top-right Login/Logo
 | Adversarial prompts             | Hardcoded   | Per-rule prompts with expected Yes/No; automated generation is future work |
 | Model API calls (CLI)           | Real        | Claude API, model `claude-sonnet-4-6`                              |
 | Pass/fail judging               | Real        | Deterministic first-word string match against expected answer      |
-| Bitcoin anchoring               | Real        | OpenTimestamps, real mainnet, per-submission anchoring             |
-| Dashboard with trust bars       | Real        | Live site reading the server API                                   |
-| Lazy OTS upgrade                | Real        | Pending proofs auto-upgrade to real block height after ~3 hours    |
+| Bitcoin anchoring               | Real        | OpenTimestamps, real mainnet, per-submission anchoring (live since the Cloudflare move; never ran on Railway) |
+| Dashboard with trust bars       | Real        | Live site on Cloudflare Workers reading the Worker API             |
+| OTS upgrade                     | Real        | Hourly cron upgrades pending proofs to a real block height after ~3 hours |
 | API response signing            | Mocked      | CLI attaches a fake signature to demonstrate the protocol slot     |
 | Bounty pool / payout            | Narrated    | Shown in the UI as a static figure                                 |
 | Multiple providers tested live  | Placeholder | Only Claude / Anthropic is real; others are hardcoded              |
@@ -129,11 +138,11 @@ Single-page React Router app with two states toggled by the top-right Login/Logo
 | Package manager  | pnpm workspaces                   | Monorepo across `shared`, `cli`, `server`, `web`       |
 | Language         | TypeScript (strict)               | One language across CLI, server, and web               |
 | CLI eval tool    | tsx + Anthropic SDK + js-yaml     | Single script; shells out to `ots` for stamping        |
-| Server           | Express 4                         | Submissions API + per-file OTS stamp + lazy upgrade    |
-| Web framework    | React Router 7 + Vite 6           | Vite dev proxies `/api` → server on 3001               |
+| Server           | Hono on Cloudflare Workers + D1   | Submissions API, OTS stamping over HTTP, cron upgrade  |
+| Web framework    | React Router 7 + Vite 6           | Vite dev proxies `/api` → `wrangler dev` on 3001       |
 | UI               | Tailwind CSS 4 + shadcn/ui        | `lucide-react` icons, Radix slot                       |
-| Tests            | Vitest                            | API tests with supertest; component tests with RTL    |
-| Deployment       | Railway                           | `pnpm build` → `tsx packages/server/src/index.ts`; server also serves the built web bundle |
+| Tests            | Vitest                            | API tests in the Workers runtime (`@cloudflare/vitest-plugin`, local D1); component tests with RTL |
+| Deployment       | Cloudflare Workers (`workers.dev`) | Worker serves the API and the built web bundle as static assets; `pnpm deploy` |
 | Bitcoin          | OpenTimestamps                    | Free, real mainnet, no wallet code                     |
 
 ## Monorepo Structure
@@ -145,10 +154,16 @@ proof-of-purpose/
 │   ├── cli/src/
 │   │   ├── index.ts            # load YAML → call Claude → judge → bundle → ots stamp
 │   │   └── index.test.ts
-│   ├── server/src/
-│   │   ├── app.ts              # /api/constitution, /api/submissions (GET, POST, DELETE)
-│   │   ├── app.test.ts
-│   │   └── index.ts            # server bootstrap + static web bundle serving
+│   ├── server/
+│   │   ├── wrangler.jsonc      # Worker, static assets, D1 binding, hourly cron
+│   │   ├── migrations/         # D1 schema
+│   │   ├── test/               # D1 setup + recorded OpenTimestamps calendar fixtures
+│   │   └── src/
+│   │       ├── app.ts          # /api/constitution, /api/submissions (GET, POST, DELETE, downloads)
+│   │       ├── anchoring.ts    # stamp on calendars, cron upgrade
+│   │       ├── ots.ts          # minimal .ots build / walk / splice
+│   │       ├── constitution.ts # YAML bundled at build time
+│   │       └── index.ts        # Worker entry: fetch + scheduled
 │   └── web/app/
 │       ├── root.tsx, routes.ts, app.css, env.d.ts
 │       ├── routes/home.tsx     # single-page dashboard (+ home.test.tsx)
@@ -161,8 +176,7 @@ proof-of-purpose/
 │       └── test/setup.ts
 ├── data/
 │   ├── constitutions/anthropic-claude.yaml
-│   ├── results/anthropic-eval-bundle.json   # CLI bundle output
-│   └── submissions/            # Per-question dashboard submissions + .ots proofs (runtime)
+│   └── results/anthropic-eval-bundle.json   # CLI bundle output
 ├── prd/                        # bootstrap.md, pop-v1.md, prototype.md
 ├── prompts/                    # Scratch prompt drafts
 ├── ralph/                      # Autonomous agent loop scripts
@@ -180,7 +194,7 @@ proof-of-purpose/
 ├── CLAUDE.md                   # Project-level Claude Code instructions
 ├── UBIQUITOUS_LANGUAGE.md      # DDD-style glossary
 ├── eval-bundle-example.json    # Pre-recorded backup bundle (already on Bitcoin)
-├── railway.toml
+├── eval-bundle-example.json.ots
 ├── package.json                # Workspace root
 ├── pnpm-workspace.yaml
 └── tsconfig.base.json
@@ -194,14 +208,15 @@ Install [Node.js](https://nodejs.org/) (v20+) and [pnpm](https://pnpm.io/), then
 
 ```bash
 pnpm install                        # install all workspace dependencies
-pnpm --filter server dev            # API server on http://localhost:3001
+pnpm --filter server dev            # Worker on http://localhost:3001 (wrangler dev, local D1)
 pnpm --filter web dev               # dashboard on http://localhost:5173 (proxies /api → 3001)
 pnpm test                           # run all package tests
 pnpm typecheck                      # type-check all packages
-pnpm build                          # build web + server for deployment
+pnpm build                          # build web + dry-run bundle the Worker
+pnpm run deploy                     # build, apply D1 migrations, deploy (needs Cloudflare auth)
 ```
 
-The web dev server proxies `/api/*` to the server on port 3001, so both must be running together for local development.
+The web dev server proxies `/api/*` to the Worker on port 3001, so both must be running together for local development. Deploying needs `wrangler login` or `CLOUDFLARE_API_TOKEN` with Workers Scripts and D1 edit rights.
 
 To run the CLI eval pipeline:
 
@@ -215,7 +230,7 @@ pnpm --filter cli start path/to/other-constitution.yaml
 
 The OpenTimestamps CLI is a **system-level Python dependency** – it is not managed by pnpm and is not listed in any `package.json`.
 
-Both the server (per-submission stamping + lazy upgrade) and the CLI (bundle stamping) shell out to `ots`. OpenTimestamps provides free, trustless timestamping by anchoring SHA-256 hashes in Bitcoin transactions – that is what makes Proof-of-Purpose results tamper-evident.
+The CLI (bundle stamping) shells out to `ots`; the server does not need it, since the Worker talks to the calendars over HTTP. OpenTimestamps provides free, trustless timestamping by anchoring SHA-256 hashes in Bitcoin transactions – that is what makes Proof-of-Purpose results tamper-evident.
 
 Install via [pipx](https://pipx.pypa.io/) (recommended) or pip:
 
@@ -228,11 +243,11 @@ Usage:
 
 ```bash
 ots stamp data/results/anthropic-eval-bundle.json    # anchor hash on Bitcoin
-ots verify data/results/anthropic-eval-bundle.json   # verify the timestamp
+ots verify data/results/anthropic-eval-bundle.json   # verify the timestamp (needs a Bitcoin node)
 ots upgrade data/results/anthropic-eval-bundle.json.ots  # promote a pending proof to a confirmed block
 ```
 
-If `ots` is not installed, the server and CLI both still work – anchoring is best-effort and logs a warning when the binary is missing.
+If `ots` is not installed, the CLI still works – anchoring is best-effort and logs a warning when the binary is missing.
 
 ## Proof of Concept
 
@@ -244,10 +259,11 @@ Hash:   ee39ee9a0bbfbd10335aed9e43aa6967e4b1414625f9ff2aab9aa1884667a389
 Proof:  eval-bundle-example.json.ots
 ```
 
-Verify with:
+The proof carries four Bitcoin attestations, the earliest at block 944547 (2026-04-11). Verify with:
 
 ```bash
-ots verify eval-bundle-example.json
+ots --no-bitcoin verify eval-bundle-example.json.ots   # prints block heights + merkle roots to check
+ots verify eval-bundle-example.json.ots                # full check against a local Bitcoin node
 ```
 
 A walkthrough of the full live demo is in [`DEMO.md`](DEMO.md).

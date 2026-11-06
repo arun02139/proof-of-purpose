@@ -206,6 +206,24 @@ function PromptCard({ prompt, submission, isAuditor, onSubmit }: PromptCardProps
               </div>
             )
           ) : null}
+          {/* Verification pair: `ots verify <id>.json.ots` next to <id>.json */}
+          {effectiveSubmission.anchor && effectiveSubmission.id && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Proof:</span>
+              <a
+                href={`/api/submissions/${effectiveSubmission.id}.json`}
+                className="underline hover:text-foreground"
+              >
+                .json
+              </a>
+              <a
+                href={`/api/submissions/${effectiveSubmission.id}.json.ots`}
+                className="underline hover:text-foreground"
+              >
+                .json.ots
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>

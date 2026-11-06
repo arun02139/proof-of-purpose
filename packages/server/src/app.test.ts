@@ -1,392 +1,250 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
-  mkdtempSync,
-  rmSync,
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  readdirSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { resolve } from "node:path";
-import request from "supertest";
-import { createApp } from "./app.js";
+  createExecutionContext,
+  env,
+  waitOnExecutionContext,
+} from "cloudflare:test";
+import { APRIL_PROOF_HEX, APRIL_UPGRADES } from "../test/fixtures";
+import { createApp, type AppOptions } from "./app";
+import { upgradePending, UPGRADE_MIN_AGE_MS } from "./anchoring";
+import { fromHex, toHex, walkProof } from "./ots";
 
-const app = createApp();
+const QID = "honesty-disclose-ai-1";
+
+/** Request helper: runs waitUntil work (stamping) to completion before returning. */
+function client(options: AppOptions = { stamp: async () => null }) {
+  const app = createApp(options);
+  return async (path: string, init?: RequestInit) => {
+    const ctx = createExecutionContext();
+    const res = await app.request(path, init, env, ctx);
+    await waitOnExecutionContext(ctx);
+    return res;
+  };
+}
+
+const post = (body: unknown): RequestInit => ({
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+const request = client();
+
+beforeEach(async () => {
+  await env.DB.prepare("DELETE FROM submissions").run();
+});
 
 describe("GET /api/constitution", () => {
-  it("returns 200", async () => {
-    const res = await request(app).get("/api/constitution");
+  it("returns 200 with provider and model", async () => {
+    const res = await request("/api/constitution");
     expect(res.status).toBe(200);
+    const body = await res.json<any>();
+    expect(body.provider).toBe("Anthropic");
+    expect(body.model).toBe("claude-sonnet-4-6");
   });
 
-  it("returns JSON with provider and model", async () => {
-    const res = await request(app).get("/api/constitution");
-    expect(res.body.provider).toBe("Anthropic");
-    expect(res.body.model).toBe("claude-sonnet-4-6");
+  it("returns 5 rules with 4 prompts each", async () => {
+    const body = await (await request("/api/constitution")).json<any>();
+    expect(body.rules).toHaveLength(5);
+    for (const rule of body.rules) expect(rule.prompts).toHaveLength(4);
   });
 
-  it("returns 5 rules", async () => {
-    const res = await request(app).get("/api/constitution");
-    expect(res.body.rules).toHaveLength(5);
-  });
-
-  it("each rule has prompts array with at least one prompt", async () => {
-    const res = await request(app).get("/api/constitution");
-    for (const rule of res.body.rules) {
-      expect(Array.isArray(rule.prompts)).toBe(true);
-      expect(rule.prompts.length).toBeGreaterThanOrEqual(1);
-    }
-  });
-
-  it("returns 20 total prompts (4 per rule)", async () => {
-    const res = await request(app).get("/api/constitution");
-    const totalPrompts = res.body.rules.reduce(
-      (n: number, r: { prompts: unknown[] }) => n + r.prompts.length,
-      0,
-    );
-    expect(totalPrompts).toBe(20);
-  });
-
-  it("each prompt has question_id, text, and expected_answer", async () => {
-    const res = await request(app).get("/api/constitution");
-    for (const rule of res.body.rules) {
+  it("each rule has id, principle, category; each prompt has question_id, text, expected_answer", async () => {
+    const body = await (await request("/api/constitution")).json<any>();
+    for (const rule of body.rules) {
+      expect(typeof rule.id).toBe("string");
+      expect(typeof rule.principle).toBe("string");
+      expect(["safety", "honesty", "bias", "transparency"]).toContain(rule.category);
       for (const prompt of rule.prompts) {
-        expect(prompt).toHaveProperty("question_id");
-        expect(prompt).toHaveProperty("text");
-        expect(prompt).toHaveProperty("expected_answer");
+        expect(typeof prompt.question_id).toBe("string");
+        expect(typeof prompt.text).toBe("string");
         expect(["Yes", "No"]).toContain(prompt.expected_answer);
       }
     }
   });
 
-  it("each rule has id, principle, and category", async () => {
-    const res = await request(app).get("/api/constitution");
-    const validCategories = ["safety", "honesty", "bias", "transparency"];
-    for (const rule of res.body.rules) {
-      expect(typeof rule.id).toBe("string");
-      expect(typeof rule.principle).toBe("string");
-      expect(validCategories).toContain(rule.category);
-    }
-  });
-
   it("includes CORS headers", async () => {
-    const res = await request(app)
-      .get("/api/constitution")
-      .set("Origin", "http://localhost:5173");
-    expect(res.headers["access-control-allow-origin"]).toBeDefined();
+    const res = await request("/api/constitution", {
+      headers: { Origin: "http://localhost:5173" },
+    });
+    expect(res.headers.get("access-control-allow-origin")).toBeTruthy();
   });
 });
 
 describe("unknown routes", () => {
   it("returns 404 for unknown API routes", async () => {
-    const res = await request(app).get("/api/nonexistent");
+    const res = await request("/api/nonexistent");
     expect(res.status).toBe(404);
   });
 });
 
-describe("Static file serving", () => {
-  it("serves index.html at the root path", async () => {
-    const res = await request(app).get("/");
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toMatch(/html/);
+describe("POST /api/submissions", () => {
+  it("returns 201 with the created submission", async () => {
+    const res = await request(
+      "/api/submissions",
+      post({ question_id: QID, answer: "Yes, I am an AI assistant.", hash: "abc123" }),
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json<any>();
+    expect(body).toMatchObject({
+      question_id: QID,
+      answer: "Yes, I am an AI assistant.",
+      hash: "abc123",
+      verdict: "pass",
+    });
+    expect(body.timestamp).toBeDefined();
+    expect(body.id).toMatch(new RegExp(`^${QID}-\\d+-[0-9a-f]+$`));
   });
 
-  it("API routes take precedence over static files", async () => {
-    const res = await request(app).get("/api/constitution");
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toMatch(/json/);
-    expect(res.body.provider).toBe("Anthropic");
+  it.each([
+    ["Yes, I am an AI.", "pass"],
+    ["No, I am a human being.", "fail"],
+    ["yes, absolutely.", "pass"],
+  ])("verdict for %j is %s (case-insensitive first word)", async (answer, verdict) => {
+    const res = await request("/api/submissions", post({ question_id: QID, answer, hash: "h" }));
+    expect((await res.json<any>()).verdict).toBe(verdict);
   });
 
-  it("SPA fallback: unknown non-API routes serve index.html", async () => {
-    const res = await request(app).get("/some/deep/route");
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toMatch(/html/);
+  it.each([
+    [{ answer: "Yes", hash: "h" }, /Missing required fields/],
+    [{ question_id: QID, hash: "h" }, /Missing required fields/],
+    [{ question_id: QID, answer: "Yes" }, /Missing required fields/],
+    [{ question_id: "nonexistent-question", answer: "Yes", hash: "h" }, /Invalid question_id/],
+    [{ question_id: QID, answer: ["Yes"], hash: "h" }, /must be strings/],
+    [{ question_id: QID, answer: "Y".repeat(9000), hash: "h" }, /too long/],
+  ])("returns 400 for %j", async (payload, error) => {
+    const res = await request("/api/submissions", post(payload));
+    expect(res.status).toBe(400);
+    expect((await res.json<any>()).error).toMatch(error);
+  });
+
+  it("returns 400 for a non-JSON body", async () => {
+    const res = await request("/api/submissions", { method: "POST", body: "nope" });
+    expect(res.status).toBe(400);
+  });
+
+  it("succeeds without an anchor when every calendar fails", async () => {
+    const res = await request("/api/submissions", post({ question_id: QID, answer: "Yes", hash: "h" }));
+    expect(res.status).toBe(201);
+    const [listed] = await (await request("/api/submissions")).json<any[]>();
+    expect(listed.anchor).toBeUndefined();
+  });
+
+  it("stamps the exact stored JSON and marks it pending", async () => {
+    let stamped = "";
+    const withStamp = client({
+      stamp: async (body) => {
+        stamped = body;
+        return APRIL_PROOF_HEX;
+      },
+    });
+    const created = await (
+      await withStamp("/api/submissions", post({ question_id: QID, answer: "Yes", hash: "h" }))
+    ).json<any>();
+
+    const [listed] = await (await withStamp("/api/submissions")).json<any[]>();
+    expect(listed.anchor).toEqual({ status: "pending" });
+
+    const json = await withStamp(`/api/submissions/${created.id}.json`);
+    expect(json.headers.get("content-disposition")).toContain(`${created.id}.json`);
+    expect(await json.text()).toBe(stamped);
+
+    const ots = await withStamp(`/api/submissions/${created.id}.json.ots`);
+    expect(ots.headers.get("content-type")).toBe("application/octet-stream");
+    expect(toHex(new Uint8Array(await ots.arrayBuffer()))).toBe(APRIL_PROOF_HEX);
   });
 });
 
-describe("Submissions API", () => {
-  let tmpDir: string;
-  let testApp: ReturnType<typeof createApp>;
-
-  beforeEach(() => {
-    tmpDir = mkdtempSync(resolve(tmpdir(), "pop-test-"));
-    testApp = createApp(tmpDir);
+describe("GET /api/submissions", () => {
+  it("returns an empty array when no submissions exist", async () => {
+    const res = await request("/api/submissions");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
   });
 
-  afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
+  it("returns submissions after one is created", async () => {
+    await request("/api/submissions", post({ question_id: QID, answer: "Yes", hash: "abc123" }));
+    const body = await (await request("/api/submissions")).json<any[]>();
+    expect(body).toHaveLength(1);
+    expect(body[0].question_id).toBe(QID);
   });
 
-  describe("GET /api/submissions", () => {
-    it("returns empty array when no submissions exist", async () => {
-      const res = await request(testApp).get("/api/submissions");
-      expect(res.status).toBe(200);
-      expect(res.body).toEqual([]);
-    });
+  it("404s downloads for unknown ids, unstamped proofs and bad names", async () => {
+    const { id } = await (
+      await request("/api/submissions", post({ question_id: QID, answer: "Yes", hash: "h" }))
+    ).json<any>();
+    expect((await request(`/api/submissions/${id}.json.ots`)).status).toBe(404);
+    expect((await request("/api/submissions/nope-1.json")).status).toBe(404);
+    expect((await request(`/api/submissions/${id}.txt`)).status).toBe(404);
+  });
+});
 
-    it("returns submissions after one is created", async () => {
-      await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes, I am an AI assistant.",
-          hash: "abc123",
-        });
-
-      const res = await request(testApp).get("/api/submissions");
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveLength(1);
-      expect(res.body[0].question_id).toBe("honesty-disclose-ai-1");
-    });
+describe("DELETE /api/submissions", () => {
+  it("returns { deleted: 0 } when no submissions exist", async () => {
+    const res = await request("/api/submissions", { method: "DELETE" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ deleted: 0 });
   });
 
-  describe("POST /api/submissions", () => {
-    it("returns 201 with the created submission", async () => {
-      const res = await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes, I am an AI assistant.",
-          hash: "abc123",
-        });
+  it("deletes all submissions and returns the count", async () => {
+    await request("/api/submissions", post({ question_id: QID, answer: "Yes", hash: "h1" }));
+    await request("/api/submissions", post({ question_id: QID, answer: "Yes", hash: "h2" }));
+    const res = await request("/api/submissions", { method: "DELETE" });
+    expect(await res.json()).toEqual({ deleted: 2 });
+    expect(await (await request("/api/submissions")).json()).toEqual([]);
+  });
+});
 
-      expect(res.status).toBe(201);
-      expect(res.body.question_id).toBe("honesty-disclose-ai-1");
-      expect(res.body.answer).toBe("Yes, I am an AI assistant.");
-      expect(res.body.hash).toBe("abc123");
-      expect(res.body.verdict).toBe("pass");
-      expect(res.body.timestamp).toBeDefined();
-    });
+describe("upgradePending (cron)", () => {
+  const now = Date.now();
 
-    it("computes pass verdict when answer matches expected", async () => {
-      const res = await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes, I am an AI.",
-          hash: "hash1",
-        });
-      expect(res.body.verdict).toBe("pass");
-    });
+  async function insertPending(id: string, createdAt: number) {
+    await env.DB.prepare(
+      `INSERT INTO submissions (id, question_id, body, ots, anchor_status, created_at)
+       VALUES (?1, ?2, '{}', ?3, 'pending', ?4)`,
+    )
+      .bind(id, QID, APRIL_PROOF_HEX, createdAt)
+      .run();
+  }
 
-    it("computes fail verdict when answer does not match", async () => {
-      const res = await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "No, I am a human being.",
-          hash: "hash2",
-        });
-      expect(res.body.verdict).toBe("fail");
-    });
+  /** Serves the recorded calendar upgrades for the April proof. */
+  const calendars: typeof fetch = async (input) => {
+    const url = String(input instanceof Request ? input.url : input);
+    const uri = Object.keys(APRIL_UPGRADES).find((u) => url.startsWith(`${u}/timestamp/`));
+    return uri
+      ? new Response(fromHex(APRIL_UPGRADES[uri]))
+      : new Response("Not found", { status: 404 });
+  };
 
-    it("verdict matching is case-insensitive", async () => {
-      const res = await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "yes, absolutely.",
-          hash: "hash3",
-        });
-      expect(res.body.verdict).toBe("pass");
-    });
+  it("anchors due proofs and records the earliest block height", async () => {
+    await insertPending("old-1", now - UPGRADE_MIN_AGE_MS - 1);
+    expect(await upgradePending(env.DB, now, calendars)).toBe(1);
 
-    it("returns 400 when question_id is missing", async () => {
-      const res = await request(testApp)
-        .post("/api/submissions")
-        .send({ answer: "Yes", hash: "h" });
-      expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/Missing required fields/);
-    });
+    const row = await env.DB.prepare("SELECT * FROM submissions WHERE id = 'old-1'").first<any>();
+    expect(row.anchor_status).toBe("anchored");
+    expect(row.block_height).toBe(944547);
+    expect(row.checked_at).toBe(now);
+    expect(walkProof(fromHex(row.ots)).pending).toEqual([]);
 
-    it("returns 400 when answer is missing", async () => {
-      const res = await request(testApp)
-        .post("/api/submissions")
-        .send({ question_id: "honesty-disclose-ai-1", hash: "h" });
-      expect(res.status).toBe(400);
-    });
-
-    it("returns 400 when hash is missing", async () => {
-      const res = await request(testApp)
-        .post("/api/submissions")
-        .send({ question_id: "honesty-disclose-ai-1", answer: "Yes" });
-      expect(res.status).toBe(400);
-    });
-
-    it("returns 400 for invalid question_id", async () => {
-      const res = await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "nonexistent-question",
-          answer: "Yes",
-          hash: "h",
-        });
-      expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/Invalid question_id/);
-    });
-
-    it("writes submission file to disk", async () => {
-      await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes",
-          hash: "disk-test",
-        });
-
-      const files = readdirSync(resolve(tmpDir, "submissions"));
-      expect(files).toHaveLength(1);
-      expect(files[0]).toMatch(/^honesty-disclose-ai-1-\d+\.json$/);
-    });
-
-    it("submission succeeds even when ots is not installed", async () => {
-      // ots is not available in the test environment — submission should still work
-      const res = await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes, I am an AI.",
-          hash: "ots-unavailable-test",
-        });
-
-      expect(res.status).toBe(201);
-      expect(res.body.verdict).toBe("pass");
-    });
+    const [listed] = await (await request("/api/submissions")).json<any[]>();
+    expect(listed.anchor).toEqual({ status: "anchored", block_height: 944547 });
   });
 
-  describe("DELETE /api/submissions", () => {
-    it("returns { deleted: 0 } when no submissions exist", async () => {
-      const res = await request(testApp).delete("/api/submissions");
-      expect(res.status).toBe(200);
-      expect(res.body.deleted).toBe(0);
-    });
-
-    it("deletes all submission files and returns count", async () => {
-      await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes",
-          hash: "h1",
-        });
-      await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes",
-          hash: "h2",
-        });
-
-      const res = await request(testApp).delete("/api/submissions");
-      expect(res.status).toBe(200);
-      expect(res.body.deleted).toBe(2);
-
-      const after = await request(testApp).get("/api/submissions");
-      expect(after.body).toEqual([]);
-    });
-
-    it("also deletes .ots files alongside submissions", async () => {
-      await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes",
-          hash: "ots-del",
-        });
-
-      const subDir = resolve(tmpDir, "submissions");
-      const jsonFiles = readdirSync(subDir).filter((f) => f.endsWith(".json"));
-      writeFileSync(resolve(subDir, jsonFiles[0] + ".ots"), "fake-proof");
-
-      const res = await request(testApp).delete("/api/submissions");
-      expect(res.status).toBe(200);
-      expect(res.body.deleted).toBe(2); // .json + .json.ots
-
-      const remaining = readdirSync(subDir);
-      expect(remaining).toHaveLength(0);
-    });
+  it("leaves recent proofs alone", async () => {
+    await insertPending("recent-1", now - 60_000);
+    expect(await upgradePending(env.DB, now, calendars)).toBe(0);
+    const row = await env.DB.prepare("SELECT * FROM submissions").first<any>();
+    expect(row.checked_at).toBeNull();
+    expect(row.ots).toBe(APRIL_PROOF_HEX);
   });
 
-  describe("OTS anchor status", () => {
-    it("returns no anchor field when no .ots file exists", async () => {
-      // Create a submission
-      await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes",
-          hash: "no-ots",
-        });
-
-      const res = await request(testApp).get("/api/submissions");
-      expect(res.body[0].anchor).toBeUndefined();
-    });
-
-    it("returns pending anchor when .ots file exists", async () => {
-      // Create a submission
-      await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes",
-          hash: "with-ots",
-        });
-
-      // Simulate OTS creating a .ots file alongside the JSON
-      const subDir = resolve(tmpDir, "submissions");
-      const files = readdirSync(subDir).filter((f) => f.endsWith(".json"));
-      expect(files).toHaveLength(1);
-      writeFileSync(resolve(subDir, files[0] + ".ots"), "fake-ots-proof");
-
-      const res = await request(testApp).get("/api/submissions");
-      expect(res.body[0].anchor).toBeDefined();
-      expect(res.body[0].anchor.status).toBe("pending");
-    });
-
-    it("does not attempt upgrade on recent submissions (< 3h old)", async () => {
-      await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes",
-          hash: "recent-ots",
-        });
-
-      const subDir = resolve(tmpDir, "submissions");
-      const files = readdirSync(subDir).filter((f) => f.endsWith(".json"));
-      writeFileSync(resolve(subDir, files[0] + ".ots"), "fake-ots-proof");
-
-      // Fresh submission should remain pending without upgrade attempt
-      const res = await request(testApp).get("/api/submissions");
-      expect(res.body[0].anchor.status).toBe("pending");
-    });
-
-    it("attempts upgrade on old submissions (>= 3h old)", async () => {
-      await request(testApp)
-        .post("/api/submissions")
-        .send({
-          question_id: "honesty-disclose-ai-1",
-          answer: "Yes",
-          hash: "old-ots",
-        });
-
-      const subDir = resolve(tmpDir, "submissions");
-      const files = readdirSync(subDir).filter((f) => f.endsWith(".json"));
-      const jsonPath = resolve(subDir, files[0]);
-
-      // Backdate the submission timestamp to 4 hours ago
-      const submission = JSON.parse(readFileSync(jsonPath, "utf-8"));
-      submission.timestamp = new Date(
-        Date.now() - 4 * 60 * 60 * 1000,
-      ).toISOString();
-      writeFileSync(jsonPath, JSON.stringify(submission, null, 2));
-      writeFileSync(jsonPath + ".ots", "fake-ots-proof");
-
-      // ots binary not available in test — still returns pending gracefully
-      const res = await request(testApp).get("/api/submissions");
-      expect(res.body[0].anchor.status).toBe("pending");
-    });
+  it("stays pending, and records the check, while calendars still answer 404", async () => {
+    await insertPending("old-2", now - UPGRADE_MIN_AGE_MS - 1);
+    const notYet: typeof fetch = async () => new Response("Pending", { status: 404 });
+    expect(await upgradePending(env.DB, now, notYet)).toBe(0);
+    const row = await env.DB.prepare("SELECT * FROM submissions").first<any>();
+    expect(row.anchor_status).toBe("pending");
+    expect(row.checked_at).toBe(now);
+    expect(row.ots).toBe(APRIL_PROOF_HEX);
   });
 });

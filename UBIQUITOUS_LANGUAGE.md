@@ -21,7 +21,7 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Submission** | An auditor's recorded answer and hash for a specific prompt, stored as a JSON file on the server | Eval bundle, result, response, entry |
+| **Submission** | An auditor's recorded answer and hash for a specific prompt, stored as exact JSON bytes in a D1 row on the server | Eval bundle, result, response, entry |
 | **Hash** | A SHA-256 string that accompanies a submission, computed client-side in Claude Code to attest the answer was not fabricated | Seal, signature, digest |
 | **Verdict** | The pass or fail outcome of a submission, determined by whether the model's first word matches the expected answer | Score, result, judgement |
 | **Anchor** | An OpenTimestamps proof that a submission's content existed at a specific moment, confirmed on the Bitcoin blockchain | Timestamp, stamp, proof, receipt |
@@ -56,6 +56,6 @@
 
 ## Flagged ambiguities
 
-- **"hash"** is used in two contexts: (1) the client-side **Hash** that an **Auditor** submits alongside an answer, and (2) the SHA-256 digest of the **Submission** JSON file that gets stamped by OpenTimestamps. In the current prototype both happen to be SHA-256, but they serve different purposes. For the hackathon this overload is acceptable; if the signing mechanism becomes real, these should be distinguished.
+- **"hash"** is used in two contexts: (1) the client-side **Hash** that an **Auditor** submits alongside an answer, and (2) the SHA-256 digest of the **Submission** JSON bytes that get stamped by OpenTimestamps. In the current prototype both happen to be SHA-256, but they serve different purposes. For the hackathon this overload is acceptable; if the signing mechanism becomes real, these should be distinguished.
 - **"eval bundle"** still appears in the CLI codebase (`buildBundle`, `EvalBundle` type, `*-eval-bundle.json` filenames). In the live deployed system the concept is replaced by per-prompt **Submissions**. The CLI remains functional for local use but its terminology is legacy.
 - **"question" vs "prompt"** — both appear in conversation and UI copy. **Prompt** is canonical in the domain model and code; "question" is acceptable in user-facing dashboard text.

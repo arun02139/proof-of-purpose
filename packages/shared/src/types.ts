@@ -80,6 +80,8 @@ export interface AuditorSubmission {
 // ---------------------------------------------------------------------------
 
 export interface Submission {
+  /** Server-assigned; names the `/api/submissions/<id>.json(.ots)` downloads. */
+  id?: string;
   question_id: string;
   answer: string;
   hash: string;
