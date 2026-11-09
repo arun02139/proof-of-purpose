@@ -7,6 +7,8 @@ import { fromHex } from "./ots.js";
 
 export interface Env {
   DB: D1Database;
+  /** Worker secret for DELETE /api/submissions. Unset means DELETE is always refused. */
+  ADMIN_TOKEN?: string;
 }
 
 export interface AppOptions {
@@ -25,6 +27,17 @@ interface SubmissionRow {
   block_height: number | null;
 }
 
+/** Constant-time check of an `Authorization: Bearer <token>` header against the secret. */
+async function isAdmin(header: string | undefined, secret: string | undefined): Promise<boolean> {
+  if (!secret || !header?.startsWith("Bearer ")) return false;
+  const digest = async (s: string) =>
+    new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
+  const [a, b] = await Promise.all([digest(header.slice(7)), digest(secret)]);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
 function toSubmission(row: SubmissionRow): Submission {
   const submission: Submission = { ...JSON.parse(row.body), id: row.id };
   if (row.ots && row.anchor_status) {
@@ -40,7 +53,8 @@ export function createApp(options: AppOptions = {}) {
   const stamp = options.stamp ?? stampOnCalendars;
   const app = new Hono<{ Bindings: Env }>();
 
-  app.use("/api/*", cors());
+  // DELETE is left out: it is an admin call, never made from a browser.
+  app.use("/api/*", cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"] }));
 
   app.get("/api/constitution", (c) => c.json(constitution));
 
@@ -80,6 +94,9 @@ export function createApp(options: AppOptions = {}) {
   });
 
   app.delete("/api/submissions", async (c) => {
+    if (!(await isAdmin(c.req.header("Authorization"), c.env.ADMIN_TOKEN))) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
     const result = await c.env.DB.prepare("DELETE FROM submissions").run();
     return c.json({ deleted: result.meta.changes });
   });

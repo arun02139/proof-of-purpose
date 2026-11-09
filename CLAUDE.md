@@ -57,6 +57,7 @@ The auditor then pastes the **Answer** into the answer field and the **Hash** in
 - **Install:** `pnpm install`
 - **Dev server:** `pnpm --filter server dev` (Worker via `wrangler dev`, port 3001, local D1) + `pnpm --filter web dev` (port 5173, proxies /api to 3001)
 - **Deploy:** `pnpm --filter web build`, then from `packages/server` run `cf-wrangler d1 migrations apply pop-submissions --remote` and `cf-wrangler deploy` (Cloudflare Worker `proof-of-purpose`, D1 `pop-submissions`; live at https://proof-of-purpose.arun02139.workers.dev)
+- **Admin reset:** `DELETE /api/submissions` needs `Authorization: Bearer <ADMIN_TOKEN>` (Worker secret, unset by default, so DELETE is refused). See README "Admin reset".
 - **Test:** `pnpm run test`
 - **Typecheck:** `pnpm run typecheck`
 - **Build:** `pnpm run build`

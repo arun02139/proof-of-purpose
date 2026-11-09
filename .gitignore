@@ -7,3 +7,4 @@ build/
 .react-router/
 .wrangler/
 playground/
+.dev.vars
