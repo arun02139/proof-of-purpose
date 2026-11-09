@@ -5,18 +5,21 @@ import {
   waitOnExecutionContext,
 } from "cloudflare:test";
 import { APRIL_PROOF_HEX, APRIL_UPGRADES } from "../test/fixtures";
-import { createApp, type AppOptions } from "./app";
+import { createApp, type AppOptions, type Env } from "./app";
 import { upgradePending, UPGRADE_MIN_AGE_MS } from "./anchoring";
 import { fromHex, toHex, walkProof } from "./ots";
 
 const QID = "honesty-disclose-ai-1";
 
 /** Request helper: runs waitUntil work (stamping) to completion before returning. */
-function client(options: AppOptions = { stamp: async () => null }) {
+function client(
+  options: AppOptions = { stamp: async () => null },
+  bindings: Partial<Env> = {},
+) {
   const app = createApp(options);
   return async (path: string, init?: RequestInit) => {
     const ctx = createExecutionContext();
-    const res = await app.request(path, init, env, ctx);
+    const res = await app.request(path, init, { ...env, ...bindings }, ctx);
     await waitOnExecutionContext(ctx);
     return res;
   };
@@ -180,18 +183,73 @@ describe("GET /api/submissions", () => {
 });
 
 describe("DELETE /api/submissions", () => {
-  it("returns { deleted: 0 } when no submissions exist", async () => {
-    const res = await request("/api/submissions", { method: "DELETE" });
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ deleted: 0 });
+  const TOKEN = "test-admin-token";
+  const admin = client(undefined, { ADMIN_TOKEN: TOKEN });
+  const del = (auth?: string): RequestInit => ({
+    method: "DELETE",
+    headers: auth ? { Authorization: auth } : {},
   });
 
-  it("deletes all submissions and returns the count", async () => {
+  async function seed() {
     await request("/api/submissions", post({ question_id: QID, answer: "Yes", hash: "h1" }));
     await request("/api/submissions", post({ question_id: QID, answer: "Yes", hash: "h2" }));
-    const res = await request("/api/submissions", { method: "DELETE" });
+  }
+  const count = async () =>
+    ((await (await request("/api/submissions")).json()) as unknown[]).length;
+
+  it("401s without a token and deletes nothing", async () => {
+    await seed();
+    const res = await admin("/api/submissions", del());
+    expect(res.status).toBe(401);
+    expect(await count()).toBe(2);
+  });
+
+  it("401s with a wrong token or a non-Bearer header", async () => {
+    await seed();
+    expect((await admin("/api/submissions", del("Bearer nope"))).status).toBe(401);
+    expect((await admin("/api/submissions", del(TOKEN))).status).toBe(401);
+    expect(await count()).toBe(2);
+  });
+
+  it.each([
+    ["unset", undefined],
+    ["empty", ""],
+    ["whitespace", "  \n"],
+  ])("401s for any token when ADMIN_TOKEN is %s (fails closed)", async (_, secret) => {
+    await seed();
+    // Explicit override, so a local .dev.vars ADMIN_TOKEN can't leak into this case.
+    const noSecret = client(undefined, { ADMIN_TOKEN: secret });
+    for (const auth of [`Bearer ${TOKEN}`, "Bearer ", "Bearer  "]) {
+      expect((await noSecret("/api/submissions", del(auth))).status).toBe(401);
+    }
+    expect(await count()).toBe(2);
+  });
+
+  it("accepts a case-insensitive scheme and ignores a trailing newline in the secret", async () => {
+    await seed();
+    const padded = client(undefined, { ADMIN_TOKEN: `${TOKEN}\n` });
+    const res = await padded("/api/submissions", del(`bearer ${TOKEN}`));
+    expect(res.status).toBe(200);
+    expect(await count()).toBe(0);
+  });
+
+  it("deletes all submissions with the right token and returns the count", async () => {
+    await seed();
+    const res = await admin("/api/submissions", del(`Bearer ${TOKEN}`));
+    expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ deleted: 2 });
-    expect(await (await request("/api/submissions")).json()).toEqual([]);
+    expect(await count()).toBe(0);
+  });
+
+  it("does not allow DELETE in CORS preflight", async () => {
+    const res = await request("/api/submissions", {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://evil.example",
+        "Access-Control-Request-Method": "DELETE",
+      },
+    });
+    expect(res.headers.get("access-control-allow-methods") ?? "").not.toContain("DELETE");
   });
 });
 

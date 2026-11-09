@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, type KeyboardEvent } from "react";
 import type { Category, ConstitutionRule, Submission } from "shared";
 import { useApiData } from "~/hooks/use-api-data";
 import { ProviderCard } from "~/components/provider-card";
@@ -27,21 +27,16 @@ type ViewState =
   | { view: "questions"; category: Category };
 
 function Dashboard() {
-  const { providers, submissions, loading, error, submitAnswer, resetSubmissions } = useApiData();
+  const { providers, submissions, loading, error, submitAnswer } = useApiData();
   const { isAuditor, toggleLogin, logout } = useAuth();
   const [viewState, setViewState] = useState<ViewState>("dashboard");
 
-  const handleShieldClick = useCallback(async () => {
-    if (isAuditor) {
-      logout();
-      setViewState("dashboard");
-    }
-    try {
-      await resetSubmissions();
-    } catch {
-      // Server may be unreachable; local state is already cleared by logout
-    }
-  }, [isAuditor, resetSubmissions, logout]);
+  // Shortcut out of the auditor view. It never touches server data: deleting
+  // submissions is an admin-only API call (see README, "Admin reset").
+  const handleShieldClick = useCallback(() => {
+    logout();
+    setViewState("dashboard");
+  }, [logout]);
 
   // Find the real (Anthropic) provider for the overlay
   const realProvider = providers.find((p) => p.isReal);
@@ -102,14 +97,23 @@ function Dashboard() {
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             <div className="flex gap-3">
               <span
-                className="mt-0.5 shrink-0 cursor-pointer"
-                onClick={handleShieldClick}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleShieldClick(); }}
-                role="button"
-                tabIndex={0}
-                title="Reset submission data"
+                className={`mt-0.5 shrink-0${isAuditor ? " cursor-pointer" : ""}`}
+                {...(isAuditor && {
+                  onClick: handleShieldClick,
+                  onKeyDown: (e: KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleShieldClick();
+                    }
+                  },
+                  role: "button",
+                  tabIndex: 0,
+                  title: "Log out of the auditor view",
+                })}
               >
-                <Shield className="h-5 w-5 text-primary hover:text-primary/70 transition-colors" />
+                <Shield
+                  className={`h-5 w-5 text-primary${isAuditor ? " hover:text-primary/70 transition-colors" : ""}`}
+                />
               </span>
               <div>
                 <p className="font-semibold">Test</p>

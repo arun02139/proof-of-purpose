@@ -20,7 +20,6 @@ interface ApiData {
     hash: string,
   ) => Promise<Submission>;
   clearSubmissions: () => void;
-  resetSubmissions: () => Promise<void>;
 }
 
 /**
@@ -153,11 +152,6 @@ export function useApiData(): ApiData {
     setSubmissions([]);
   }, []);
 
-  const resetSubmissions = useCallback(async () => {
-    await fetch("/api/submissions", { method: "DELETE" });
-    setSubmissions([]);
-  }, []);
-
   const providers = useMemo(() => {
     const list: ProviderDisplay[] = [];
     if (constitution) {
@@ -174,6 +168,5 @@ export function useApiData(): ApiData {
     error,
     submitAnswer,
     clearSubmissions,
-    resetSubmissions,
   };
 }

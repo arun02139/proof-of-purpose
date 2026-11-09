@@ -49,7 +49,7 @@ describe("Shield icon click", () => {
     expect(screen.getByText("Auditor Dashboard")).toBeInTheDocument();
 
     // Click the shield icon
-    const shieldBtn = screen.getByTitle("Reset submission data");
+    const shieldBtn = screen.getByTitle("Log out of the auditor view");
     await user.click(shieldBtn);
 
     // Should now be logged out
@@ -59,7 +59,7 @@ describe("Shield icon click", () => {
     expect(screen.getByText("Provider Trust Scores")).toBeInTheDocument();
   });
 
-  it("resets submissions when clicked while logged out", async () => {
+  it("is not a button for visitors and never sends DELETE", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const user = userEvent.setup();
     render(<Home />);
@@ -67,12 +67,14 @@ describe("Shield icon click", () => {
     await waitFor(() => {
       expect(screen.getByText("Anthropic")).toBeInTheDocument();
     });
+    expect(screen.queryByTitle("Log out of the auditor view")).toBeNull();
 
-    // Click shield while logged out
-    const shieldBtn = screen.getByTitle("Reset submission data");
-    await user.click(shieldBtn);
-
-    // Should have called DELETE /api/submissions
-    expect(fetchSpy).toHaveBeenCalledWith("/api/submissions", { method: "DELETE" });
+    // Log in, click the shield, and check no request ever deleted data
+    await user.click(screen.getByRole("button", { name: /login/i }));
+    await user.click(screen.getByTitle("Log out of the auditor view"));
+    const deletes = fetchSpy.mock.calls.filter(
+      ([, init]) => (init as RequestInit | undefined)?.method === "DELETE",
+    );
+    expect(deletes).toHaveLength(0);
   });
 });

@@ -38,6 +38,7 @@ Every artifact below was designed, written, and deployed during the MIT Bitcoin 
 - **Moved to Cloudflare (November 2026).** The Railway account was deleted, and with it the original demo. The server is now a Cloudflare Worker (Hono) with submissions in D1 and the dashboard served as static assets.
 - **Anchoring on the live site now actually runs.** The Railway build never installed the `ots` binary, so live submissions were never stamped, and they lived on an ephemeral disk. The Worker stamps over HTTP against the public OpenTimestamps calendars, and an hourly Cron Trigger upgrades pending proofs to Bitcoin block heights.
 - **`eval-bundle-example.json.ots` upgraded.** It was committed while still pending; it now carries the four Bitcoin attestations the calendars completed in April.
+- **Wiping submissions is admin-only.** Once submissions became permanent Bitcoin-anchored records, an open `DELETE /api/submissions` (which the dashboard's shield logo used to call for any visitor) was a liability. DELETE now needs `Authorization: Bearer <ADMIN_TOKEN>`, a Worker secret, and is refused outright while that secret is unset. The shield only logs an auditor out. See [Admin reset](#admin-reset).
 
 ## Architecture
 
@@ -94,6 +95,17 @@ ots verify file.json  # anyone verifies later (needs a Bitcoin node; or --no-bit
 ```
 
 If a single byte of the JSON changes, verification fails.
+
+### Admin reset
+
+The live Worker ships with no `ADMIN_TOKEN`, so nobody can delete submissions through the API. To enable a reset, set the secret from `packages/server`, then call DELETE with it:
+
+```bash
+cf-wrangler secret put ADMIN_TOKEN
+curl -X DELETE -H "Authorization: Bearer <token>" https://proof-of-purpose.arun02139.workers.dev/api/submissions
+```
+
+`cf-wrangler secret delete ADMIN_TOKEN` turns it off again. Locally, put `ADMIN_TOKEN=...` in `packages/server/.dev.vars`.
 
 ## Constitution (Prototype Scope)
 
@@ -159,7 +171,7 @@ proof-of-purpose/
 │   │   ├── migrations/         # D1 schema
 │   │   ├── test/               # D1 setup + recorded OpenTimestamps calendar fixtures
 │   │   └── src/
-│   │       ├── app.ts          # /api/constitution, /api/submissions (GET, POST, DELETE, downloads)
+│   │       ├── app.ts          # /api/constitution, /api/submissions (GET, POST, admin DELETE, downloads)
 │   │       ├── anchoring.ts    # stamp on calendars, cron upgrade
 │   │       ├── ots.ts          # minimal .ots build / walk / splice
 │   │       ├── constitution.ts # YAML bundled at build time
