@@ -211,11 +211,26 @@ describe("DELETE /api/submissions", () => {
     expect(await count()).toBe(2);
   });
 
-  it("401s even with a token when ADMIN_TOKEN is unset (fails closed)", async () => {
+  it.each([
+    ["unset", undefined],
+    ["empty", ""],
+    ["whitespace", "  \n"],
+  ])("401s for any token when ADMIN_TOKEN is %s (fails closed)", async (_, secret) => {
     await seed();
-    const res = await request("/api/submissions", del(`Bearer ${TOKEN}`));
-    expect(res.status).toBe(401);
+    // Explicit override, so a local .dev.vars ADMIN_TOKEN can't leak into this case.
+    const noSecret = client(undefined, { ADMIN_TOKEN: secret });
+    for (const auth of [`Bearer ${TOKEN}`, "Bearer ", "Bearer  "]) {
+      expect((await noSecret("/api/submissions", del(auth))).status).toBe(401);
+    }
     expect(await count()).toBe(2);
+  });
+
+  it("accepts a case-insensitive scheme and ignores a trailing newline in the secret", async () => {
+    await seed();
+    const padded = client(undefined, { ADMIN_TOKEN: `${TOKEN}\n` });
+    const res = await padded("/api/submissions", del(`bearer ${TOKEN}`));
+    expect(res.status).toBe(200);
+    expect(await count()).toBe(0);
   });
 
   it("deletes all submissions with the right token and returns the count", async () => {

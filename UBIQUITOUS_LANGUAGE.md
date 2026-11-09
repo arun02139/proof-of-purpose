@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | **Auditor** | A person who tests an AI model against its constitution, submits results, and demos the system | Operator, evaluator, tester, demo presenter |
 | **Visitor** | A person who views the dashboard without submitting results | Viewer, guest |
+| **Admin** | Whoever holds the Worker's `ADMIN_TOKEN` secret, and so can wipe all submissions through the API. Not a dashboard role: there is no admin UI | Superuser, owner |
 | **Provider** | An AI company whose model is subject to constitutional evaluation | Vendor, company |
 
 ## Constitution

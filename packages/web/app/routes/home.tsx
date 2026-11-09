@@ -101,14 +101,19 @@ function Dashboard() {
                 {...(isAuditor && {
                   onClick: handleShieldClick,
                   onKeyDown: (e: KeyboardEvent) => {
-                    if (e.key === "Enter" || e.key === " ") handleShieldClick();
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleShieldClick();
+                    }
                   },
                   role: "button",
                   tabIndex: 0,
                   title: "Log out of the auditor view",
                 })}
               >
-                <Shield className="h-5 w-5 text-primary hover:text-primary/70 transition-colors" />
+                <Shield
+                  className={`h-5 w-5 text-primary${isAuditor ? " hover:text-primary/70 transition-colors" : ""}`}
+                />
               </span>
               <div>
                 <p className="font-semibold">Test</p>

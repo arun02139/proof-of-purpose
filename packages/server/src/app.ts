@@ -29,10 +29,13 @@ interface SubmissionRow {
 
 /** Constant-time check of an `Authorization: Bearer <token>` header against the secret. */
 async function isAdmin(header: string | undefined, secret: string | undefined): Promise<boolean> {
-  if (!secret || !header?.startsWith("Bearer ")) return false;
+  // Trim the secret: a piped `secret put` easily stores a trailing newline.
+  const expected = secret?.trim();
+  const match = header?.match(/^Bearer +(.+)$/i);
+  if (!expected || !match) return false;
   const digest = async (s: string) =>
     new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
-  const [a, b] = await Promise.all([digest(header.slice(7)), digest(secret)]);
+  const [a, b] = await Promise.all([digest(match[1].trim()), digest(expected)]);
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
   return diff === 0;
